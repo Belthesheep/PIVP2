@@ -12,7 +12,7 @@ import shutil
 # Database setup
 DB_NAME = "sheepbooru.db"
 UPLOAD_DIR = "uploads"
-py
+
 # Ensure upload directory exists
 os.makedirs(UPLOAD_DIR, exist_ok=True)
 
