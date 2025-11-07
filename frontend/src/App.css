@@ -6,9 +6,7 @@
 
 body {
   font-family: system-ui, -apple-system, sans-serif;
-  background: #f3f6f9;
-  color: #222;
-  font-size: 16px;
+  background: #f5f5f5;
 }
 
 .app {
@@ -17,8 +15,8 @@ body {
 
 /* HEADER */
 header {
-  background: linear-gradient(90deg,#ffffff,#f7fbff);
-  padding: 1.25rem 2.5rem;
+  background: #fff;
+  padding: 1rem 2rem;
   box-shadow: 0 2px 4px rgba(0,0,0,0.1);
   display: flex;
   align-items: center;
@@ -36,24 +34,16 @@ nav {
 }
 
 nav button {
-  padding: 0.6rem 1.1rem;
-  border: 1px solid rgba(0,0,0,0.06);
-  background: #eef4fb;
+  padding: 0.5rem 1rem;
+  border: none;
+  background: #eee;
   cursor: pointer;
-  border-radius: 6px;
-  transition: background 0.12s, transform 0.12s, box-shadow 0.12s;
-  font-weight: 600;
-  color: #034ea2;
+  border-radius: 4px;
+  transition: background 0.2s;
 }
 
 nav button:hover {
-  background: #e3f0ff;
-  transform: translateY(-1px);
-  box-shadow: 0 4px 10px rgba(12,40,80,0.06);
-}
-
-nav button:active {
-  transform: translateY(0);
+  background: #ddd;
 }
 
 .user-info {
@@ -64,9 +54,9 @@ nav button:active {
 }
 
 .user-info button {
-  padding: 0.55rem 0.95rem;
+  padding: 0.5rem 1rem;
   border: none;
-  background: #e53935;
+  background: #f44336;
   color: white;
   cursor: pointer;
   border-radius: 4px;
@@ -80,17 +70,17 @@ nav button:active {
 .container {
   display: flex;
   max-width: 1400px;
-  margin: 2.25rem auto;
+  margin: 2rem auto;
   padding: 0 2rem;
   gap: 2rem;
 }
 
 /* SIDEBAR */
 .sidebar {
-  width: 260px;
+  width: 250px;
   background: #fff;
-  padding: 1.25rem;
-  border-radius: 10px;
+  padding: 1.5rem;
+  border-radius: 8px;
   height: fit-content;
   box-shadow: 0 2px 4px rgba(0,0,0,0.1);
 }
@@ -106,41 +96,23 @@ nav button:active {
   gap: 0.5rem;
 }
 
-.tag-toggle-row {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 6px 8px;
-  border-radius: 8px;
-  cursor: pointer;
-  user-select: none;
-}
-
-.tag-toggle-row input[type="checkbox"] {
-  width: 16px;
-  height: 16px;
-}
-
 .tag-list button {
   text-align: left;
-  padding: 0.55rem 0.6rem;
+  padding: 0.5rem;
   border: none;
-  background: #fbfcff;
+  background: #f5f5f5;
   cursor: pointer;
-  border-radius: 8px;
-  transition: background 0.12s, box-shadow 0.12s;
-  border: 1px solid rgba(20,40,80,0.03);
+  border-radius: 4px;
+  transition: background 0.2s;
 }
 
 .tag-list button:hover {
-  background: #f0f6ff;
-  box-shadow: 0 6px 18px rgba(10,40,90,0.04);
+  background: #e0e0e0;
 }
 
 .tag-list button.active {
-  background: #1e6ed8;
+  background: #4a90e2;
   color: white;
-  box-shadow: 0 6px 18px rgba(30,110,216,0.18);
 }
 
 /* POSTS GRID */
@@ -148,41 +120,39 @@ nav button:active {
   flex: 1;
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
-  gap: 1.25rem;
+  gap: 1.5rem;
   align-content: start;
 }
 
 .post-card {
-  background: linear-gradient(180deg,#ffffff,#fbfdff);
-  border-radius: 10px;
+  background: #fff;
+  border-radius: 8px;
   overflow: hidden;
-  border: 1px solid rgba(10,30,60,0.04);
-  box-shadow: 0 6px 18px rgba(10,30,60,0.04);
-  transition: transform 0.16s, box-shadow 0.16s;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+  transition: transform 0.2s, box-shadow 0.2s;
   cursor: pointer;
 }
 
 .post-card:hover {
-  transform: translateY(-6px);
-  box-shadow: 0 10px 30px rgba(10,30,60,0.08);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 8px rgba(0,0,0,0.15);
 }
 
 .post-card img {
   width: 100%;
-  height: 260px;
+  height: 250px;
   object-fit: cover;
   display: block;
 }
 
 .post-info {
-  padding: 1.1rem;
+  padding: 1rem;
 }
 
 .post-desc {
-  margin-bottom: 0.6rem;
-  color: #1f2b3a;
-  font-size: 0.95rem;
-  line-height: 1.35;
+  margin-bottom: 0.5rem;
+  color: #333;
+  font-size: 0.9rem;
 }
 
 .post-tags {
@@ -193,12 +163,11 @@ nav button:active {
 }
 
 .tag {
-  background: #eaf6ff;
-  color: #0b63b7;
-  padding: 0.28rem 0.6rem;
-  border-radius: 999px;
-  font-size: 0.82rem;
-  border: 1px solid rgba(10,60,120,0.06);
+  background: #e3f2fd;
+  color: #1976d2;
+  padding: 0.2rem 0.5rem;
+  border-radius: 12px;
+  font-size: 0.8rem;
 }
 
 .post-meta {
@@ -219,9 +188,9 @@ nav button:active {
 .upload-form {
   background: #fff;
   padding: 2rem;
-  border-radius: 10px;
-  box-shadow: 0 8px 24px rgba(10,30,60,0.06);
-  max-width: 560px;
+  border-radius: 8px;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+  max-width: 500px;
   margin: 0 auto;
   width: 100%;
 }
@@ -242,29 +211,28 @@ nav button:active {
 .auth-form input,
 .upload-form input,
 .upload-form textarea {
-  padding: 0.9rem 1rem;
-  border: 1px solid rgba(20,40,80,0.06);
-  border-radius: 8px;
+  padding: 0.8rem;
+  border: 1px solid #ddd;
+  border-radius: 4px;
   font-size: 1rem;
   font-family: inherit;
 }
 
 .auth-form button,
 .upload-form button {
-  padding: 0.9rem 1rem;
-  background: #1e6ed8;
+  padding: 0.8rem;
+  background: #4a90e2;
   color: white;
   border: none;
-  border-radius: 8px;
+  border-radius: 4px;
   cursor: pointer;
   font-size: 1rem;
-  font-weight: 700;
-  box-shadow: 0 8px 20px rgba(30,110,216,0.12);
+  font-weight: 500;
 }
 
 .auth-form button:hover,
 .upload-form button:hover {
-  background: #155fb0;
+  background: #357abd;
 }
 
 /* POST DETAIL */
@@ -339,7 +307,7 @@ nav button:active {
 }
 
 .btn-favorite {
-  background: #1e6ed8;
+  background: #4a90e2;
   color: white;
 }
 
@@ -348,8 +316,8 @@ nav button:active {
 }
 
 .btn-favorited {
-  background: #ffbf00;
-  color: #222;
+  background: #ffd700;
+  color: #333;
 }
 
 .btn-favorited:hover {
@@ -357,13 +325,13 @@ nav button:active {
 }
 
 .delete-btn {
-  padding: 0.5rem 0.9rem;
-  background: #d32f2f;
+  padding: 0.5rem 1rem;
+  background: #f44336;
   color: white;
   border: none;
-  border-radius: 8px;
+  border-radius: 4px;
   cursor: pointer;
-  font-size: 0.95rem;
+  font-size: 0.9rem;
 }
 
 .delete-btn:hover {
@@ -378,10 +346,10 @@ nav button:active {
 
 .pool-link {
   text-align: left;
-  padding: 0.6rem 0.7rem;
-  background: #fbfdff;
-  border: 1px solid rgba(10,30,60,0.03);
-  border-radius: 8px;
+  padding: 0.5rem;
+  background: #f5f5f5;
+  border: none;
+  border-radius: 4px;
   cursor: pointer;
 }
 
@@ -400,6 +368,20 @@ nav button:active {
   margin-bottom: 0.5rem;
 }
 
+.pool-search-input {
+  width: 100%;
+  padding: 0.5rem;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  margin-bottom: 0.5rem;
+  font-size: 1rem;
+}
+
+.pool-search-results {
+  max-height: 200px;
+  overflow-y: auto;
+}
+
 .pool-selector button {
   display: block;
   width: 100%;
@@ -409,10 +391,18 @@ nav button:active {
   border: 1px solid #ddd;
   border-radius: 4px;
   cursor: pointer;
+  text-align: left;
 }
 
 .pool-selector button:hover {
   background: #f5f5f5;
+}
+
+.no-results {
+  padding: 1rem;
+  text-align: center;
+  color: #999;
+  font-style: italic;
 }
 
 /* POOLS VIEW */
@@ -427,30 +417,6 @@ nav button:active {
   justify-content: space-between;
   align-items: center;
   margin-bottom: 2rem;
-}
-
-.pool-create-form {
-  display: flex;
-  gap: 8px;
-  align-items: center;
-}
-
-.pool-create-input {
-  padding: 0.6rem 0.9rem;
-  border-radius: 8px;
-  border: 1px solid rgba(20,40,80,0.06);
-  background: #fff;
-  color: #122;
-  min-width: 180px;
-}
-
-.pool-create-btn {
-  padding: 0.6rem 0.9rem;
-  border-radius: 8px;
-  border: none;
-  background: #1e6ed8;
-  color: white;
-  font-weight: 700;
 }
 
 .pools-header button {
@@ -475,11 +441,11 @@ nav button:active {
 
 .pool-card {
   background: #fff;
-  padding: 1.25rem;
-  border-radius: 10px;
-  box-shadow: 0 8px 20px rgba(10,30,60,0.04);
+  padding: 1.5rem;
+  border-radius: 8px;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
   cursor: pointer;
-  transition: transform 0.12s, box-shadow 0.12s;
+  transition: transform 0.2s, box-shadow 0.2s;
 }
 
 .pool-card:hover {
@@ -554,10 +520,10 @@ nav button:active {
 
 /* CAROUSEL */
 .carousel {
-  background: transparent;
+  background: #fff;
   padding: 2rem;
   border-radius: 8px;
-  box-shadow: none;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
   display: flex;
   align-items: center;
   gap: 2rem;
@@ -591,7 +557,7 @@ nav button:active {
 
 .carousel-content img {
   max-width: 100%;
-  max-height: 72vh;
+  max-height: 500px;
   border-radius: 8px;
   margin-bottom: 1rem;
 }
