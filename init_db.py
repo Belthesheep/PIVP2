@@ -26,6 +26,7 @@ def init_db():
             uploader_id INTEGER NOT NULL,
             upload_date DATETIME NOT NULL,
             description TEXT,
+            favorite_count INTEGER NOT NULL DEFAULT 0,
             FOREIGN KEY (uploader_id) REFERENCES users(id) ON DELETE CASCADE
         )
     """)
@@ -49,9 +50,46 @@ def init_db():
         )
     """)
     
+    # Favorites table (tracks which users favorited which posts)
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS favorites (
+            user_id INTEGER NOT NULL,
+            post_id INTEGER NOT NULL,
+            favorited_at DATETIME NOT NULL,
+            PRIMARY KEY (user_id, post_id),
+            FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+            FOREIGN KEY (post_id) REFERENCES posts(id) ON DELETE CASCADE
+        )
+    """)
+    
+    # Pools table (collections of posts)
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS pools (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            name TEXT NOT NULL,
+            description TEXT,
+            creator_id INTEGER NOT NULL,
+            created_at DATETIME NOT NULL,
+            FOREIGN KEY (creator_id) REFERENCES users(id) ON DELETE CASCADE
+        )
+    """)
+    
+    # PoolPosts junction table (ordered posts in pools)
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS pool_posts (
+            pool_id INTEGER NOT NULL,
+            post_id INTEGER NOT NULL,
+            order_index INTEGER NOT NULL,
+            PRIMARY KEY (pool_id, post_id),
+            FOREIGN KEY (pool_id) REFERENCES pools(id) ON DELETE CASCADE,
+            FOREIGN KEY (post_id) REFERENCES posts(id) ON DELETE CASCADE
+        )
+    """)
+    
     conn.commit()
     conn.close()
-    print(f"Database '{DB_NAME}' initialized successfully!")
+    print(f"Database '{DB_NAME}' initialized successfully with 7 tables!")
+    print("Tables: users, posts, tags, post_tags, favorites, pools, pool_posts")
 
 if __name__ == "__main__":
     init_db()
