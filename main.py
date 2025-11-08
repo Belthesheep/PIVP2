@@ -490,20 +490,26 @@ async def list_pools():
     """List all pools"""
     conn = get_db()
     cursor = conn.cursor()
-    
     cursor.execute("""
         SELECT p.id, p.name, p.description, p.creator_id, u.username as creator_username,
-               p.created_at, COUNT(pp.post_id) as post_count
+               p.created_at
         FROM pools p
         JOIN users u ON p.creator_id = u.id
-        LEFT JOIN pool_posts pp ON p.id = pp.pool_id
-        GROUP BY p.id
         ORDER BY p.created_at DESC
     """)
-    
+
     pools = cursor.fetchall()
+    result = []
+    for p in pools:
+        pool = dict(p)
+        # compute post count explicitly to avoid any GROUP BY surprising behavior
+        cursor.execute("SELECT COUNT(*) as cnt FROM pool_posts WHERE pool_id = ?", (pool['id'],))
+        cnt = cursor.fetchone()["cnt"]
+        pool['post_count'] = int(cnt)
+        result.append(pool)
+
     conn.close()
-    return [dict(p) for p in pools]
+    return result
 
 @app.get("/api/pools/{pool_id}")
 async def get_pool(pool_id: int):

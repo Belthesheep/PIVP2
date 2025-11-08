@@ -453,6 +453,38 @@ nav button:active {
   font-weight: 700;
 }
 
+/* suggestion dropdown buttons */
+.suggestion-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.suggestion-btn {
+  background: #1e6ed8;
+  color: white;
+  border: none;
+  padding: 6px 8px;
+  border-radius: 999px;
+  cursor: pointer;
+  font-size: 0.9rem;
+}
+
+.suggestion-btn:hover { background: #155fb0; }
+
+/* sidebar tag buttons */
+.tag-sidebar-btn {
+  color: black;
+  text-align: left;
+  padding: 8px;
+  border-radius: 8px;
+  border: 1px solid rgba(20,40,80,0.03);
+  background: #fbfdff;
+  cursor: pointer;
+}
+
+.tag-sidebar-btn:hover { background: #f0f6ff; }
+
 .pools-header button {
   padding: 0.8rem 1.5rem;
   background: #4a90e2;

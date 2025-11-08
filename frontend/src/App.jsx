@@ -9,8 +9,7 @@ function App() {
   const [posts, setPosts] = useState([]);
   const [tags, setTags] = useState([]);
   const [selectedTag, setSelectedTag] = useState(null);
-  const [selectedTags, setSelectedTags] = useState([]); // toggled tags (array of tag names)
-  const [tagSearch, setTagSearch] = useState(''); // search input for tags
+  const [tagSearch, setTagSearch] = useState(''); // search input for tags (comma-separated)
   const [poolSearch, setPoolSearch] = useState(''); // search input for adding to pool
   const [pools, setPools] = useState([]);
 
@@ -211,20 +210,18 @@ function App() {
     }
   }, []);
 
-  // helper: parse tag search string into tokens (comma or space separated)
+  // helper: parse tag search string into tokens (comma-separated only)
   const parseTagTokens = (s) => {
     if (!s) return [];
-    return s.split(/[,\s]+/).map(t => t.trim().toLowerCase()).filter(Boolean);
+    return s.split(',').map(t => t.trim().toLowerCase()).filter(Boolean);
   };
 
-  // derived filtered posts based on selectedTags and tagSearch (AND semantics)
+  // derived filtered posts based on tagSearch (AND semantics)
   const filteredPosts = posts.filter(post => {
     const postTags = (post.tags || []).map(t => String(t).toLowerCase());
     const searchTags = parseTagTokens(tagSearch);
-    const toggled = (selectedTags || []).map(t => String(t).toLowerCase()).filter(Boolean);
-    const required = Array.from(new Set([...searchTags, ...toggled]));
-    if (required.length === 0) return true;
-    return required.every(rt => postTags.includes(rt));
+    if (searchTags.length === 0) return true;
+    return searchTags.every(rt => postTags.includes(rt));
   });
 
   const handleCreatePool = async (name, description) => {
@@ -313,6 +310,18 @@ function App() {
       return pool.posts.some(p => p.id === postId || p.post_id === postId);
     });
   };
+
+    // robust helper to get number of posts in a pool regardless of API shape
+    const poolPostCount = (pool) => {
+      if (!pool) return 0;
+      if (Array.isArray(pool.posts)) return pool.posts.length;
+      // common alternative fields returned by some APIs
+      if (typeof pool.post_count === 'number') return pool.post_count;
+      if (typeof pool.postCount === 'number') return pool.postCount;
+      if (typeof pool.count === 'number') return pool.count;
+      if (typeof pool.size === 'number') return pool.size;
+      return 0;
+    };
 
   return (
     <div className="app">
@@ -421,35 +430,51 @@ function App() {
         {(view !== 'register' && view !== 'login' && view !== 'upload') && (
           <aside className="sidebar">
             <h3>Tags</h3>
-            <div style={{ marginBottom: 8 }}>
+            <div style={{ marginBottom: 8, position: 'relative' }}>
               <input
-                placeholder="Search tags (comma or space separated)"
+                placeholder="Search tags (comma-separated)"
                 value={tagSearch}
                 onChange={(e) => setTagSearch(e.target.value)}
                 style={{ width: '100%', padding: '8px 10px', borderRadius: 6, border: '1px solid rgba(20,40,80,0.06)' }}
               />
+
+              {/* Tag suggestions dropdown (compact buttons) */}
+              {(() => {
+                const parts = tagSearch.split(',');
+                const current = parts[parts.length - 1].trim().toLowerCase();
+                const tokens = parseTagTokens(tagSearch);
+                const suggestions = current.length > 0 ? tags.filter(t => t.tag_name.toLowerCase().includes(current) && !tokens.includes(t.tag_name.toLowerCase())) : [];
+                if (suggestions.length === 0) return null;
+                return (
+                  <div className="suggestion-list" style={{ marginTop: 6 }}>
+                    {suggestions.map(s => (
+                      <button key={s.id} className="suggestion-btn" onClick={() => {
+                        // append tag + comma
+                        setTagSearch(prev => {
+                          const base = prev.trim();
+                          if (!base) return `${s.tag_name},`;
+                          // if last char is comma, append directly
+                          if (base.endsWith(',')) return `${base}${s.tag_name},`;
+                          return `${base},${s.tag_name},`;
+                        });
+                      }}>{s.tag_name}</button>
+                    ))}
+                  </div>
+                );
+              })()}
             </div>
+
             <div className="tag-list">
-              <label className="tag-toggle-row">
-                <input type="checkbox" checked={selectedTags.length === 0 && !tagSearch} onChange={() => { setSelectedTags([]); setTagSearch(''); }} />
-                <span style={{ marginLeft: 8 }}>All Posts ({posts.length})</span>
-              </label>
               {tags.map(tag => (
-                <label key={tag.id} className="tag-toggle-row">
-                  <input
-                    type="checkbox"
-                    checked={(selectedTags || []).includes(tag.tag_name)}
-                    onChange={(e) => {
-                      const name = tag.tag_name;
-                      setSelectedTags(prev => {
-                        const set = new Set(prev || []);
-                        if (set.has(name)) set.delete(name); else set.add(name);
-                        return Array.from(set);
-                      });
-                    }}
-                  />
-                  <span style={{ marginLeft: 8 }}>{tag.tag_name} ({tag.post_count})</span>
-                </label>
+                <button key={tag.id} className="tag-sidebar-btn" onClick={() => {
+                  // when clicking a sidebar tag, append to tagSearch plus comma
+                  setTagSearch(prev => {
+                    const base = prev.trim();
+                    if (!base) return `${tag.tag_name},`;
+                    if (base.endsWith(',')) return `${base}${tag.tag_name},`;
+                    return `${base},${tag.tag_name},`;
+                  });
+                }}>{tag.tag_name} <small style={{ marginLeft: 8, color: '#666' }}>({tag.post_count})</small></button>
               ))}
             </div>
           </aside>
@@ -546,14 +571,12 @@ function App() {
                         onChange={(e) => setPoolSearch(e.target.value)}
                         style={{ width: '100%', padding: '8px 10px', borderRadius: 6, border: '1px solid rgba(20,40,80,0.06)', marginBottom: 8 }}
                       />
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                      {/* Pool suggestions as compact buttons - clicking will add the post to that pool */}
+                      <div className="suggestion-list" style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                         {pools.filter(p => p.name.toLowerCase().includes(poolSearch.toLowerCase())).map(pool => (
-                          <div key={pool.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                            <div>{pool.name} <small style={{ marginLeft: 8, color: '#666' }}>{(pool.posts || []).length} posts</small></div>
-                            <button className="pool-link" onClick={(e) => { e.stopPropagation(); addPostToPool(pool.id, selectedPost.id); setPoolSearch(''); }}>
-                              Add
-                            </button>
-                          </div>
+                          <button key={pool.id} className="suggestion-btn" onClick={(e) => { e.stopPropagation(); addPostToPool(pool.id, selectedPost.id); setPoolSearch(''); }}>
+                            {pool.name} <small style={{ marginLeft: 8, color: '#fff', opacity: 0.9 }}>{poolPostCount(pool)} posts</small>
+                          </button>
                         ))}
                         {poolSearch && pools.filter(p => p.name.toLowerCase().includes(poolSearch.toLowerCase())).length === 0 && <div style={{ color: '#666' }}>No matching pools</div>}
                       </div>
@@ -561,9 +584,7 @@ function App() {
                   </div>
                 </div>
 
-                <div style={{ marginTop: 12 }}>
-                  <button onClick={() => openCarouselWith([selectedPost], 0)}>Open in Carousel</button>
-                </div>
+                {/* carousel button removed for single post (kept on pool detail only) */}
               </div>
             </div>
           </div>
@@ -584,7 +605,7 @@ function App() {
                   <p>{pool.description}</p>
                   <div className="pool-meta">
                     <small>by {pool.creator_username || pool.creator_id}</small>
-                    <small>{(pool.posts || []).length} posts</small>
+                    <small>{poolPostCount(pool)} posts</small>
                   </div>
                 </div>
               ))}
@@ -595,7 +616,6 @@ function App() {
         {/* POOL DETAIL VIEW */}
         {view === 'poolDetail' && selectedPool && (
           <div>
-            <button className="back-btn" onClick={() => { setView('pools'); setSelectedPool(null); }}>Back to pools</button>
             <div className="pool-header">
               <div>
                 <h2>{selectedPool.name}</h2>
@@ -603,7 +623,7 @@ function App() {
                 <small>by {selectedPool.creator_username || selectedPool.creator_id}</small>
               </div>
               <div className="pool-actions">
-                <button onClick={() => openCarouselWith(selectedPool.posts || [], 0)} disabled={!(selectedPool.posts && selectedPool.posts.length)}>Open Carousel</button>
+                <button onClick={() => openCarouselWith(selectedPool.posts || [], 0)} disabled={poolPostCount(selectedPool) === 0}>Open Carousel</button>
               </div>
             </div>
 
