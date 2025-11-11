@@ -13,6 +13,12 @@ function App() {
   const [poolSearch, setPoolSearch] = useState(''); // search input for adding to pool
   const [pools, setPools] = useState([]);
 
+  // Pagination
+  const [postsPage, setPostsPage] = useState(0);
+  const [poolsPage, setPoolsPage] = useState(0);
+  const POSTS_PER_PAGE = 16; // 4 columns x 10 rows
+  const POOLS_PER_PAGE = 30; // 3 columns x 10 rows
+
   // Views: posts, upload, register, login, pools, poolDetail, postDetail
   const [view, setView] = useState('posts');
 
@@ -170,7 +176,8 @@ function App() {
           // ignore
         }
       }
-      setSelectedPost({ ...post, _favorited: favorited });
+      // Store the pools that contain this post from the API response
+      setSelectedPost({ ...post, _favorited: favorited, _containingPools: post.pools || [] });
       setView('postDetail');
     } catch (error) {
       alert('Error loading post');
@@ -302,13 +309,11 @@ function App() {
     openPost(post.id);
   };
 
-  // small helper to find pools that contain a post (best-effort)
+  // helper to find pools that contain a post
+  // uses the pools data from the post detail API response
   const poolsContainingPost = (postId) => {
-    // many API designs return pool.posts as an array of posts; support both shapes
-    return pools.filter(pool => {
-      if (!pool.posts) return false;
-      return pool.posts.some(p => p.id === postId || p.post_id === postId);
-    });
+    if (!selectedPost || !selectedPost._containingPools) return [];
+    return selectedPost._containingPools;
   };
 
     // robust helper to get number of posts in a pool regardless of API shape
@@ -483,40 +488,52 @@ function App() {
         {/* Main content area */}
         <main style={{ flex: 1 }}>
           {view === 'posts' && (
-            <div className="posts-grid">
-              {filteredPosts.length === 0 ? (
-                <p>No posts match the selected tags or search.</p>
-              ) : (
-                filteredPosts.map(post => (
-                  <div key={post.id} className="post-card" onClick={() => onPostCardClick(post)}>
-                    <img 
-                      src={`http://localhost:8000/uploads/${post.image_filename}`} 
-                      alt={post.description || 'Post'}
-                    />
-                    <div className="post-info">
-                      <p className="post-desc">{post.description || 'No description'}</p>
-                      <div className="post-tags">
-                        {(post.tags || []).map(tag => (
-                          <span key={tag} className="tag">{tag}</span>
-                        ))}
-                      </div>
-                      <div className="post-meta">
-                        <small>by {post.uploader_username}</small>
-                        <div>
-                          <small style={{ marginRight: 8 }}>{post.favorite_count ?? 0} ★</small>
-                          {currentUser?.id === post.uploader_id && (
-                            <button 
-                              className="delete-btn"
-                              onClick={(e) => { e.stopPropagation(); handleDelete(post.id); }}
-                            >
-                              Delete
-                            </button>
-                          )}
+            <div>
+              <div className="posts-grid">
+                {filteredPosts.length === 0 ? (
+                  <p>No posts match the selected tags or search.</p>
+                ) : (
+                  filteredPosts.slice(postsPage * POSTS_PER_PAGE, (postsPage + 1) * POSTS_PER_PAGE).map(post => (
+                    <div key={post.id} className="post-card" onClick={() => onPostCardClick(post)}>
+                      <img 
+                        src={`http://localhost:8000/uploads/${post.image_filename}`} 
+                        alt={post.description || 'Post'}
+                      />
+                      <div className="post-info">
+                        <p className="post-desc">{post.description || 'No description'}</p>
+                        <div className="post-tags">
+                          {(post.tags || []).map(tag => (
+                            <span key={tag} className="tag">{tag}</span>
+                          ))}
+                        </div>
+                        <div className="post-meta">
+                          <small>by {post.uploader_username}</small>
+                          <div>
+                            <small style={{ marginRight: 8 }}>{post.favorite_count ?? 0} ★</small>
+                            {currentUser?.id === post.uploader_id && (
+                              <button 
+                                className="delete-btn"
+                                onClick={(e) => { e.stopPropagation(); handleDelete(post.id); }}
+                              >
+                                Delete
+                              </button>
+                            )}
+                          </div>
                         </div>
                       </div>
                     </div>
-                  </div>
-                ))
+                  ))
+                )}
+              </div>
+              {/* Posts pagination */}
+              {filteredPosts.length > POSTS_PER_PAGE && (
+                <div className="pagination">
+                  {Array.from({ length: Math.ceil(filteredPosts.length / POSTS_PER_PAGE) }).map((_, i) => (
+                    <button key={i} className={`page-btn ${postsPage === i ? 'active' : ''}`} onClick={() => { setPostsPage(i); window.scrollTo({ top: 0, behavior: 'smooth' }); }}>
+                      {i + 1}
+                    </button>
+                  ))}
+                </div>
               )}
             </div>
           )}
@@ -529,62 +546,70 @@ function App() {
                 <img src={`http://localhost:8000/uploads/${selectedPost.image_filename}`} alt={selectedPost.description || 'Post'} />
               </div>
               <div className="detail-info">
-                <h2>{selectedPost.description || 'No description'}</h2>
+                {/* Description + Favorite Button */}
+                <div className="detail-header">
+                  <h2>{selectedPost.description || 'No description'}</h2>
+                  <button
+                    className={selectedPost._favorited ? 'btn-favorited' : 'btn-favorite'}
+                    onClick={async () => { await toggleFavorite(selectedPost.id); }}
+                  >
+                    {selectedPost._favorited ? 'Favorited' : 'Favorite'} • {selectedPost.favorite_count ?? 0}
+                  </button>
+                </div>
+
+                {/* Tags */}
                 <div className="detail-section">
                   <h3>Tags</h3>
                   <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
                     {(selectedPost.tags || []).map(t => <span key={t} className="tag">{t}</span>)}
                   </div>
                 </div>
-                <div className="detail-section">
+
+                {/* Pools: Left side and Add to Pool: Right side */}
+                <div className="detail-pools-row">
+                  <div className="pools-column">
+                    <h3>Pools</h3>
+                    <div className="pool-links">
+                      {poolsContainingPost(selectedPost.id).length === 0 ? (
+                        <div>No pools contain this post</div>
+                      ) : (
+                        poolsContainingPost(selectedPost.id).map(pool => (
+                          <button key={pool.id} className="pool-link" onClick={() => openPool(pool.id)}>{pool.name}</button>
+                        ))
+                      )}
+                    </div>
+                  </div>
+
+                  <div className="add-to-pool-column">
+                    <h3>Add to pool</h3>
+                    <input
+                      placeholder="Search pools by name"
+                      value={poolSearch}
+                      onChange={(e) => setPoolSearch(e.target.value)}
+                      style={{ width: '100%', padding: '8px 10px', borderRadius: 6, border: '1px solid rgba(20,40,80,0.06)', marginBottom: 8 }}
+                    />
+                    {/* Pool suggestions as compact buttons - only show if search term is provided and pool creator is current user */}
+                    {poolSearch && (
+                      <div className="suggestion-list" style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                        {pools
+                          .filter(p => currentUser && p.creator_id === currentUser.id)
+                          .filter(p => p.name.toLowerCase().includes(poolSearch.toLowerCase()))
+                          .map(pool => (
+                            <button key={pool.id} className="suggestion-btn" onClick={(e) => { e.stopPropagation(); addPostToPool(pool.id, selectedPost.id); setPoolSearch(''); }}>
+                              {pool.name} <small style={{ marginLeft: 8, color: '#fff', opacity: 0.9 }}>{poolPostCount(pool)} posts</small>
+                            </button>
+                          ))}
+                        {pools.filter(p => currentUser && p.creator_id === currentUser.id).filter(p => p.name.toLowerCase().includes(poolSearch.toLowerCase())).length === 0 && <div style={{ color: '#666' }}>No matching pools</div>}
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {/* Uploader at the bottom */}
+                <div className="detail-section detail-footer">
                   <h3>Uploader</h3>
                   <small>{selectedPost.uploader_username}</small>
                 </div>
-                <div className="detail-section">
-                  <h3>Favorites</h3>
-                  <div className="detail-actions">
-                    <button
-                      className={selectedPost._favorited ? 'btn-favorited' : 'btn-favorite'}
-                      onClick={async () => { await toggleFavorite(selectedPost.id); }}
-                    >
-                      {selectedPost._favorited ? 'Favorited' : 'Favorite'} • {selectedPost.favorite_count ?? 0}
-                    </button>
-                  </div>
-                </div>
-
-                <div className="detail-section">
-                  <h3>Pools</h3>
-                  <div className="pool-links">
-                    {poolsContainingPost(selectedPost.id).length === 0 ? (
-                      <div>No pools contain this post</div>
-                    ) : (
-                      poolsContainingPost(selectedPost.id).map(pool => (
-                        <button key={pool.id} className="pool-link" onClick={() => openPool(pool.id)}>{pool.name}</button>
-                      ))
-                    )}
-
-                    <div style={{ marginTop: 12 }}>
-                      <h4>Add to pool</h4>
-                      <input
-                        placeholder="Search pools by name"
-                        value={poolSearch}
-                        onChange={(e) => setPoolSearch(e.target.value)}
-                        style={{ width: '100%', padding: '8px 10px', borderRadius: 6, border: '1px solid rgba(20,40,80,0.06)', marginBottom: 8 }}
-                      />
-                      {/* Pool suggestions as compact buttons - clicking will add the post to that pool */}
-                      <div className="suggestion-list" style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                        {pools.filter(p => p.name.toLowerCase().includes(poolSearch.toLowerCase())).map(pool => (
-                          <button key={pool.id} className="suggestion-btn" onClick={(e) => { e.stopPropagation(); addPostToPool(pool.id, selectedPost.id); setPoolSearch(''); }}>
-                            {pool.name} <small style={{ marginLeft: 8, color: '#fff', opacity: 0.9 }}>{poolPostCount(pool)} posts</small>
-                          </button>
-                        ))}
-                        {poolSearch && pools.filter(p => p.name.toLowerCase().includes(poolSearch.toLowerCase())).length === 0 && <div style={{ color: '#666' }}>No matching pools</div>}
-                      </div>
-                    </div>
-                  </div>
-                </div>
-
-                {/* carousel button removed for single post (kept on pool detail only) */}
               </div>
             </div>
           </div>
@@ -599,7 +624,7 @@ function App() {
             </div>
 
             <div className="pools-grid">
-              {pools.map(pool => (
+              {pools.slice(poolsPage * POOLS_PER_PAGE, (poolsPage + 1) * POOLS_PER_PAGE).map(pool => (
                 <div key={pool.id} className="pool-card" onClick={() => openPool(pool.id)}>
                   <h3>{pool.name}</h3>
                   <p>{pool.description}</p>
@@ -610,6 +635,17 @@ function App() {
                 </div>
               ))}
             </div>
+
+            {/* Pools pagination */}
+            {pools.length > POOLS_PER_PAGE && (
+              <div className="pagination">
+                {Array.from({ length: Math.ceil(pools.length / POOLS_PER_PAGE) }).map((_, i) => (
+                  <button key={i} className={`page-btn ${poolsPage === i ? 'active' : ''}`} onClick={() => { setPoolsPage(i); window.scrollTo({ top: 0, behavior: 'smooth' }); }}>
+                    {i + 1}
+                  </button>
+                ))}
+              </div>
+            )}
           </div>
         )}
 
