@@ -25,14 +25,13 @@ header {
   align-items: center;
   display: flex;
   gap: 2rem;
-  width: 100%;
+  max-width: 100%;
 }
 
 .app-content {
   display: flex;
   padding-top: 1rem;
-  max-width: 1600px;
-  width: 100%;
+  max-width: 100%;
   background-color: #FFE4B5;
 }
 
