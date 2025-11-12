@@ -6,23 +6,34 @@
 
 body {
   font-family: system-ui, -apple-system, sans-serif;
-  background: #f3f6f9;
+  background: #fff8dc;
   color: #222;
   font-size: 16px;
 }
 
 .app {
   min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  background: #FFE4B5;
 }
 
-/* HEADER */
 header {
-  background: linear-gradient(90deg,#ffffff,#f7fbff);
+  background: linear-gradient(#FFF8DC,#FFE4B5);
   padding: 1.25rem 2.5rem;
   box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-  display: flex;
   align-items: center;
+  display: flex;
   gap: 2rem;
+  width: 100%;
+}
+
+.app-content {
+  display: flex;
+  padding-top: 1rem;
+  max-width: 1600px;
+  width: 100%;
+  background-color: #FFE4B5;
 }
 
 header h1 {
@@ -38,18 +49,19 @@ nav {
 nav button {
   padding: 0.6rem 1.1rem;
   border: 1px solid rgba(0,0,0,0.06);
-  background: #eef4fb;
+  background: #ffd690;
   cursor: pointer;
   border-radius: 6px;
   transition: background 0.12s, transform 0.12s, box-shadow 0.12s;
   font-weight: 600;
-  color: #034ea2;
+  color: #222;
 }
 
 nav button:hover {
-  background: #e3f0ff;
+  background: #1e6ed8;
+  color: #fff;
   transform: translateY(-1px);
-  box-shadow: 0 4px 10px rgba(12,40,80,0.06);
+  box-shadow: 0 4px 10px rgba(212,175,55,0.3);
 }
 
 nav button:active {
@@ -78,21 +90,23 @@ nav button:active {
 
 /* CONTAINER */
 .container {
-  display: flex;
-  max-width: 1400px;
-  margin: 2.25rem auto;
-  padding: 0 2rem;
-  gap: 2rem;
+  flex: 1;
+  padding-left: 2rem;
+  padding-right: 2rem;
+  background: #FFE4B5;
 }
 
 /* SIDEBAR */
 .sidebar {
   width: 260px;
-  background: #fff;
   padding: 1.25rem;
   border-radius: 10px;
+  box-shadow: 0 6px 18px rgba(10,30,60,0.04);
   height: fit-content;
-  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+main {
+  flex: 1;
 }
 
 .sidebar h3 {
@@ -125,7 +139,7 @@ nav button:active {
   text-align: left;
   padding: 0.55rem 0.6rem;
   border: none;
-  background: #fbfcff;
+  background: #ffd690;
   cursor: pointer;
   border-radius: 8px;
   transition: background 0.12s, box-shadow 0.12s;
@@ -133,7 +147,8 @@ nav button:active {
 }
 
 .tag-list button:hover {
-  background: #f0f6ff;
+  background: #1e6ed8;
+  color: #fff;
   box-shadow: 0 6px 18px rgba(10,40,90,0.04);
 }
 
@@ -154,10 +169,10 @@ nav button:active {
 }
 
 .post-card {
-  background: linear-gradient(180deg,#ffffff,#fbfdff);
+  background: #ffd690;
   border-radius: 10px;
   overflow: hidden;
-  border: 1px solid rgba(10,30,60,0.04);
+  border: 2px rgba(0,0,0,1);
   box-shadow: 0 6px 18px rgba(10,30,60,0.04);
   transition: transform 0.16s, box-shadow 0.16s;
   cursor: pointer;
@@ -194,12 +209,12 @@ nav button:active {
 }
 
 .tag {
-  background: #eaf6ff;
+  background: #ffd690;
   color: #0b63b7;
   padding: 0.28rem 0.6rem;
   border-radius: 999px;
   font-size: 0.82rem;
-  border: 1px solid rgba(10,60,120,0.06);
+  border: 2px solid rgba(23, 99, 193, 0.6);
 }
 
 .post-meta {
@@ -218,7 +233,7 @@ nav button:active {
 /* FORMS */
 .auth-form,
 .upload-form {
-  background: #fff;
+  background: #ffd690;
   padding: 2rem;
   border-radius: 10px;
   box-shadow: 0 8px 24px rgba(10,30,60,0.06);
@@ -253,19 +268,20 @@ nav button:active {
 .auth-form button,
 .upload-form button {
   padding: 0.9rem 1rem;
-  background: #1e6ed8;
-  color: white;
+  background: #ffd690;
+  color: #222;
   border: none;
   border-radius: 8px;
   cursor: pointer;
   font-size: 1rem;
   font-weight: 700;
-  box-shadow: 0 8px 20px rgba(30,110,216,0.12);
+  box-shadow: 0 8px 20px rgba(212,175,55,0.2);
 }
 
 .auth-form button:hover,
 .upload-form button:hover {
-  background: #155fb0;
+  background: #1e6ed8;
+  color: #fff;
 }
 
 /* POST DETAIL */
@@ -279,32 +295,35 @@ nav button:active {
   margin-bottom: 1rem;
   padding: 0.5rem 1rem;
   background: #eee;
-  border: none;
+  border: 2px rgba(0,0,0,1);
   border-radius: 4px;
   cursor: pointer;
 }
 
-.back-btn:hover {
-  background: #ddd;
+.back-btn:hover {  
+  background: #1e6ed8;
+  color: #fff;
 }
 
 .detail-content {
   display: grid;
   grid-template-columns: 1fr;
   gap: 2rem;
-  background: #fff;
+  background: #ffd690;
   padding: 2rem;
   border-radius: 8px;
   box-shadow: 0 2px 4px rgba(0,0,0,0.1);
 }
 
 .detail-image {
-  max-width: 800px;
+  max-width:  100%;
+  max-height: 100vh;
   margin: 0 auto;
 }
 
 .detail-image img {
   width: 100%;
+  max-height: 100vh;
   border-radius: 8px;
 }
 
@@ -391,35 +410,39 @@ nav button:active {
 }
 
 .btn-favorite {
-  background: #1e6ed8;
-  color: white;
+  background: #ffd690;
+  color: #222;
+  border: 2px rgba(0,0,0,1);
 }
 
 .btn-favorite:hover {
-  background: #357abd;
+  background: #1e6ed8;
+  color: #fff;
 }
 
 .btn-favorited {
-  background: #ffbf00;
+  background: #ffd690;
   color: #222;
+  border: 2px rgba(0,0,0,1);
 }
 
 .btn-favorited:hover {
-  background: #ffed4e;
+  background: #d32f2f;
 }
 
 .delete-btn {
   padding: 0.5rem 0.9rem;
   background: #d32f2f;
   color: white;
-  border: none;
+  border: 2px rgba(0,0,0,1);
   border-radius: 8px;
   cursor: pointer;
   font-size: 0.95rem;
 }
 
 .delete-btn:hover {
-  background: #d32f2f;
+  background: #ff0000;
+  color: #000;
 }
 
 .pool-links {
@@ -431,7 +454,7 @@ nav button:active {
 .pool-link {
   text-align: left;
   padding: 0.6rem 0.7rem;
-  background: #fbfdff;
+  background: #ffd690;
   border: 1px solid rgba(10,30,60,0.03);
   border-radius: 8px;
   cursor: pointer;
@@ -439,7 +462,8 @@ nav button:active {
 }
 
 .pool-link:hover {
-  background: #e0e0e0;
+  background: #1e6ed8;
+  color: #fff;
 }
 
 .pool-selector {
@@ -465,7 +489,8 @@ nav button:active {
 }
 
 .pool-selector button:hover {
-  background: #f5f5f5;
+  background: #1e6ed8;
+  color: #fff;
 }
 
 /* POOLS VIEW */
@@ -492,17 +517,17 @@ nav button:active {
   padding: 0.6rem 0.9rem;
   border-radius: 8px;
   border: 1px solid rgba(20,40,80,0.06);
-  background: #fff;
-  color: #122;
+  background: #333;
+  color: #fff;
   min-width: 180px;
 }
 
 .pool-create-btn {
   padding: 0.6rem 0.9rem;
   border-radius: 8px;
-  border: none;
-  background: #1e6ed8;
-  color: white;
+  border: 2px rgba(0,0,0,1);
+  background: #ffd690;
+  color: #222;
   font-weight: 700;
 }
 
@@ -514,16 +539,19 @@ nav button:active {
 }
 
 .suggestion-btn {
-  background: #1e6ed8;
-  color: white;
-  border: none;
+  background: #ffd690;
+  color: #222;
+  border: 2px rgba(0,0,0,1);
   padding: 6px 8px;
   border-radius: 999px;
   cursor: pointer;
   font-size: 0.9rem;
 }
 
-.suggestion-btn:hover { background: #155fb0; }
+.suggestion-btn:hover { 
+  background: #1e6ed8;
+  color: #fff;
+}
 
 /* sidebar tag buttons */
 .tag-sidebar-btn {
@@ -531,17 +559,20 @@ nav button:active {
   text-align: left;
   padding: 8px;
   border-radius: 8px;
-  border: 1px solid rgba(20,40,80,0.03);
+  border: 2px rgba(0,0,0,1);
   background: #fbfdff;
   cursor: pointer;
 }
 
-.tag-sidebar-btn:hover { background: #f0f6ff; }
+.tag-sidebar-btn:hover { 
+  background: #1e6ed8;
+  color: #fff;
+}
 
 .pools-header button {
   padding: 0.8rem 1.5rem;
-  background: #4a90e2;
-  color: white;
+  background: #ffd690;
+  color: #222;
   border: none;
   border-radius: 4px;
   cursor: pointer;
@@ -549,7 +580,8 @@ nav button:active {
 }
 
 .pools-header button:hover {
-  background: #357abd;
+  background: #1e6ed8;
+  color: #fff;
 }
 
 .pools-grid {
@@ -560,12 +592,13 @@ nav button:active {
 }
 
 .pool-card {
-  background: #fff;
+  background: #ffd690;
   padding: 1.25rem;
   border-radius: 10px;
   box-shadow: 0 8px 20px rgba(10,30,60,0.04);
   cursor: pointer;
   transition: transform 0.12s, box-shadow 0.12s;
+  border: 2px rgba(0,0,0,1);
 }
 
 .pool-card:hover {
@@ -602,7 +635,7 @@ nav button:active {
 }
 
 .pool-header {
-  background: #fff;
+  background: #ffd690;
   padding: 1.5rem;
   border-radius: 8px;
   margin-bottom: 2rem;
@@ -630,12 +663,13 @@ nav button:active {
 }
 
 .pool-actions button:first-child {
-  background: #4a90e2;
-  color: white;
+  background: #ffd690;
+  color: #222;
 }
 
 .pool-actions button:first-child:hover {
-  background: #357abd;
+  background: #1e6ed8;
+  color: #fff;
 }
 
 /* CAROUSEL */
@@ -652,9 +686,9 @@ nav button:active {
 
 .carousel-btn {
   padding: 1rem 1.5rem;
-  background: #4a90e2;
-  color: white;
-  border: none;
+  background: #ffd690;
+  color: #222;
+  border: 2px rgba(0,0,0,1);
   border-radius: 4px;
   cursor: pointer;
   font-size: 1.5rem;
@@ -662,7 +696,8 @@ nav button:active {
 }
 
 .carousel-btn:hover:not(:disabled) {
-  background: #357abd;
+  background: #e53935;
+  color: #fff;
 }
 
 .carousel-btn:disabled {
@@ -708,6 +743,7 @@ nav button:active {
   background: #fff;
   color: #333;
   border-radius: 6px;
+  border: 2px rgba(0,0,0,1);
   cursor: pointer;
   font-weight: 500;
   transition: all 0.2s;
@@ -716,14 +752,14 @@ nav button:active {
 }
 
 .page-btn:hover {
-  background: #f5f5f5;
-  border-color: #999;
+  background: #1e6ed8;
+  color: #fff;
 }
 
 .page-btn.active {
-  background: #1e6ed8;
-  color: white;
-  border-color: #1e6ed8;
+  background: #ffd690;
+  color: #222;
+  border-color: #ffd690;
 }
 
 /* RESPONSIVE */

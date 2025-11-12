@@ -10,8 +10,10 @@ function App() {
   const [tags, setTags] = useState([]);
   const [selectedTag, setSelectedTag] = useState(null);
   const [tagSearch, setTagSearch] = useState(''); // search input for tags (comma-separated)
+  const [tagSearchQuery, setTagSearchQuery] = useState(''); // actual search query (updated on Enter only)
   const [poolSearch, setPoolSearch] = useState(''); // search input for adding to pool
   const [pools, setPools] = useState([]);
+  const [favorites, setFavorites] = useState([]); // user's favorited posts
 
   // Pagination
   const [postsPage, setPostsPage] = useState(0);
@@ -19,7 +21,7 @@ function App() {
   const POSTS_PER_PAGE = 16; // 4 columns x 10 rows
   const POOLS_PER_PAGE = 30; // 3 columns x 10 rows
 
-  // Views: posts, upload, register, login, pools, poolDetail, postDetail
+  // Views: posts, upload, register, login, pools, poolDetail, postDetail, favorites
   const [view, setView] = useState('posts');
 
   // Form states
@@ -50,6 +52,11 @@ function App() {
       try {
         const me = await api.getMe();
         setCurrentUser(me.data || null);
+        // Load favorites if user is logged in
+        if (me.data) {
+          const favs = await api.getUserFavorites(me.data.id);
+          setFavorites(favs.data || []);
+        }
       } catch (e) {
         // ignore
       }
@@ -101,6 +108,9 @@ function App() {
       setPassword('');
       setView('posts');
       loadAll();
+      // Load favorites after successful login
+      const favs = await api.getUserFavorites(me.data.id);
+      setFavorites(favs.data || []);
     } catch (error) {
       alert(error.response?.data?.detail || 'Login failed');
     }
@@ -199,11 +209,23 @@ function App() {
         const fav = (favs.data || []).some(f => f.post_id === postId || f.id === postId);
         setSelectedPost({ ...updated.data, _favorited: fav });
       }
-      // refresh posts list counts
+      // refresh posts list counts and favorites
       loadAll();
+      loadUserFavorites();
       return res.data;
     } catch (error) {
       alert('Error toggling favorite');
+    }
+  };
+
+  // Load user's favorited posts
+  const loadUserFavorites = async () => {
+    if (!currentUser) return;
+    try {
+      const res = await api.getUserFavorites(currentUser.id);
+      setFavorites(res.data || []);
+    } catch (error) {
+      console.error('Error loading favorites:', error);
     }
   };
 
@@ -223,10 +245,50 @@ function App() {
     return s.split(',').map(t => t.trim().toLowerCase()).filter(Boolean);
   };
 
-  // derived filtered posts based on tagSearch (AND semantics)
+  // helper: check if a tag already exists in the search string
+  const tagExistsInSearch = (tagName, searchString) => {
+    return parseTagTokens(searchString).includes(tagName.toLowerCase());
+  };
+
+  // helper: append a tag to search string, checking for duplicates
+  const appendTagToSearch = (currentSearch, tagName) => {
+    if (tagExistsInSearch(tagName, currentSearch)) {
+      return currentSearch; // tag already exists, don't add
+    }
+    const base = currentSearch.trim();
+    if (!base) return `${tagName},`;
+    if (base.endsWith(',')) return `${base}${tagName},`;
+    return `${base},${tagName},`;
+  };
+
+  // helper: replace the incomplete tag at the end with a complete one
+  const replaceIncompleteTag = (currentSearch, tagName) => {
+    const parts = currentSearch.split(',');
+    // Remove the last incomplete part
+    parts.pop();
+    // Add the complete tag
+    parts.push(tagName);
+    return parts.join(',') + ',';
+  };
+
+  // helper: get tags to display in sidebar (top 20 for browse, post-specific for detail)
+  const getSidebarTags = () => {
+    if (view === 'postDetail' && selectedPost) {
+      // Show only the tags from the selected post
+      return (selectedPost.tags || []).map((tagName, idx) => ({
+        id: idx,
+        tag_name: tagName,
+        post_count: 0
+      }));
+    }
+    // Show top 20 most popular tags for all other views
+    return tags.slice(0, 20);
+  };
+
+  // derived filtered posts based on tagSearchQuery (AND semantics)
   const filteredPosts = posts.filter(post => {
     const postTags = (post.tags || []).map(t => String(t).toLowerCase());
-    const searchTags = parseTagTokens(tagSearch);
+    const searchTags = parseTagTokens(tagSearchQuery);
     if (searchTags.length === 0) return true;
     return searchTags.every(rt => postTags.includes(rt));
   });
@@ -338,6 +400,9 @@ function App() {
           <button onClick={() => { setView('register'); }}>Register</button>
           <button onClick={() => { setView('login'); }}>Login</button>
           <button onClick={() => { setView('pools'); }}>Pools</button>
+          {currentUser && (
+            <button onClick={() => { setView('favorites'); setPostsPage(0); }}>Favorites</button>
+          )}
         </nav>
 
         <div style={{ marginLeft: 'auto', display: 'flex', gap: '1rem', alignItems: 'center' }}>
@@ -352,87 +417,9 @@ function App() {
         </div>
       </header>
 
-      <div className="container">
-        {/* REGISTER VIEW */}
-        {view === 'register' && (
-          <div className="auth-form">
-            <h2>Register New User</h2>
-            <form onSubmit={handleRegister}>
-              <input
-                type="text"
-                placeholder="Username (min 3 chars)"
-                value={username}
-                onChange={(e) => setUsername(e.target.value)}
-                required
-              />
-              <input
-                type="password"
-                placeholder="Password (min 6 chars)"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                required
-              />
-              <button type="submit">Register</button>
-            </form>
-          </div>
-        )}
-
-        {/* LOGIN VIEW */}
-        {view === 'login' && (
-          <div className="auth-form">
-            <h2>Login</h2>
-            <form onSubmit={handleLogin}>
-              <input
-                type="text"
-                placeholder="Username"
-                value={username}
-                onChange={(e) => setUsername(e.target.value)}
-                required
-              />
-              <input
-                type="password"
-                placeholder="Password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                required
-              />
-              <button type="submit">Login</button>
-            </form>
-          </div>
-        )}
-
-        {/* UPLOAD VIEW */}
-        {view === 'upload' && (
-          <div className="upload-form">
-            <h2>Upload New Post</h2>
-            {!currentUser && <p className="warning">⚠️ Please login first!</p>}
-            <form onSubmit={handleUpload}>
-              <input
-                type="file"
-                accept="image/*"
-                onChange={(e) => setUploadFile(e.target.files[0])}
-                required
-              />
-              <input
-                type="text"
-                placeholder="Description (optional)"
-                value={uploadDescription}
-                onChange={(e) => setUploadDescription(e.target.value)}
-              />
-              <input
-                type="text"
-                placeholder="Tags (comma-separated)"
-                value={uploadTags}
-                onChange={(e) => setUploadTags(e.target.value)}
-                required
-              />
-              <button type="submit" disabled={!currentUser}>Upload</button>
-            </form>
-          </div>
-        )}
-
+      <div className="app-content">
         {/* Sidebar (show for browsing and detail views) */}
-        {(view !== 'register' && view !== 'login' && view !== 'upload') && (
+        {(view !== 'register' && view !== 'login' && view !== 'upload' && view !== 'favorites') && (
           <aside className="sidebar">
             <h3>Tags</h3>
             <div style={{ marginBottom: 8, position: 'relative' }}>
@@ -440,6 +427,16 @@ function App() {
                 placeholder="Search tags (comma-separated)"
                 value={tagSearch}
                 onChange={(e) => setTagSearch(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    e.preventDefault();
+                    setTagSearchQuery(tagSearch);
+                    if (view !== 'posts') {
+                      setView('posts');
+                      setPostsPage(0);
+                    }
+                  }
+                }}
                 style={{ width: '100%', padding: '8px 10px', borderRadius: 6, border: '1px solid rgba(20,40,80,0.06)' }}
               />
 
@@ -454,14 +451,8 @@ function App() {
                   <div className="suggestion-list" style={{ marginTop: 6 }}>
                     {suggestions.map(s => (
                       <button key={s.id} className="suggestion-btn" onClick={() => {
-                        // append tag + comma
-                        setTagSearch(prev => {
-                          const base = prev.trim();
-                          if (!base) return `${s.tag_name},`;
-                          // if last char is comma, append directly
-                          if (base.endsWith(',')) return `${base}${s.tag_name},`;
-                          return `${base},${s.tag_name},`;
-                        });
+                        // Replace the incomplete tag with the complete one
+                        setTagSearch(prev => replaceIncompleteTag(prev, s.tag_name));
                       }}>{s.tag_name}</button>
                     ))}
                   </div>
@@ -470,23 +461,97 @@ function App() {
             </div>
 
             <div className="tag-list">
-              {tags.map(tag => (
+              {getSidebarTags().map(tag => (
                 <button key={tag.id} className="tag-sidebar-btn" onClick={() => {
-                  // when clicking a sidebar tag, append to tagSearch plus comma
-                  setTagSearch(prev => {
-                    const base = prev.trim();
-                    if (!base) return `${tag.tag_name},`;
-                    if (base.endsWith(',')) return `${base}${tag.tag_name},`;
-                    return `${base},${tag.tag_name},`;
-                  });
-                }}>{tag.tag_name} <small style={{ marginLeft: 8, color: '#666' }}>({tag.post_count})</small></button>
+                  // when clicking a sidebar tag, append to tagSearch plus comma (checking for duplicates)
+                  setTagSearch(prev => appendTagToSearch(prev, tag.tag_name));
+                }}>{tag.tag_name} {tag.post_count > 0 && <small style={{ marginLeft: 8, color: '#666' }}>({tag.post_count})</small>}</button>
               ))}
             </div>
           </aside>
         )}
 
-        {/* Main content area */}
-        <main style={{ flex: 1 }}>
+        <div className="container">
+          {/* REGISTER VIEW */}
+          {view === 'register' && (
+            <div className="auth-form">
+              <h2>Register New User</h2>
+              <form onSubmit={handleRegister}>
+                <input
+                  type="text"
+                  placeholder="Username (min 3 chars)"
+                  value={username}
+                  onChange={(e) => setUsername(e.target.value)}
+                  required
+                />
+                <input
+                  type="password"
+                  placeholder="Password (min 6 chars)"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  required
+                />
+                <button type="submit">Register</button>
+              </form>
+            </div>
+          )}
+
+          {/* LOGIN VIEW */}
+          {view === 'login' && (
+            <div className="auth-form">
+              <h2>Login</h2>
+              <form onSubmit={handleLogin}>
+                <input
+                  type="text"
+                  placeholder="Username"
+                  value={username}
+                  onChange={(e) => setUsername(e.target.value)}
+                  required
+                />
+                <input
+                  type="password"
+                  placeholder="Password"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  required
+                />
+                <button type="submit">Login</button>
+              </form>
+            </div>
+          )}
+
+          {/* UPLOAD VIEW */}
+          {view === 'upload' && (
+            <div className="upload-form">
+              <h2>Upload New Post</h2>
+              {!currentUser && <p className="warning">⚠️ Please login first!</p>}
+              <form onSubmit={handleUpload}>
+                <input
+                  type="file"
+                  accept="image/*"
+                  onChange={(e) => setUploadFile(e.target.files[0])}
+                  required
+                />
+                <input
+                  type="text"
+                  placeholder="Description (optional)"
+                  value={uploadDescription}
+                  onChange={(e) => setUploadDescription(e.target.value)}
+                />
+                <input
+                  type="text"
+                  placeholder="Tags (comma-separated)"
+                  value={uploadTags}
+                  onChange={(e) => setUploadTags(e.target.value)}
+                  required
+                />
+                <button type="submit" disabled={!currentUser}>Upload</button>
+              </form>
+            </div>
+          )}
+
+          {/* Main content area */}
+          <main>
           {view === 'posts' && (
             <div>
               <div className="posts-grid">
@@ -685,6 +750,64 @@ function App() {
           </div>
         )}
 
+        {/* FAVORITES VIEW */}
+        {view === 'favorites' && (
+          <div>
+            <h2 style={{ marginBottom: '1.5rem' }}>My Favorites</h2>
+            {!currentUser ? (
+              <p>Please login to see your favorites</p>
+            ) : favorites.length === 0 ? (
+              <p>You haven't favorited any posts yet</p>
+            ) : (
+              <div>
+                <div className="posts-grid">
+                  {favorites.slice(postsPage * POSTS_PER_PAGE, (postsPage + 1) * POSTS_PER_PAGE).map(post => (
+                    <div key={post.id} className="post-card" onClick={() => onPostCardClick(post)}>
+                      <img 
+                        src={`http://localhost:8000/uploads/${post.image_filename}`} 
+                        alt={post.description || 'Post'}
+                      />
+                      <div className="post-info">
+                        <p className="post-desc">{post.description || 'No description'}</p>
+                        <div className="post-tags">
+                          {(post.tags || []).map(tag => (
+                            <span key={tag} className="tag">{tag}</span>
+                          ))}
+                        </div>
+                        <div className="post-meta">
+                          <small>by {post.uploader_username}</small>
+                          <div>
+                            <small style={{ marginRight: 8 }}>{post.favorite_count ?? 0} ★</small>
+                            {currentUser?.id === post.uploader_id && (
+                              <button 
+                                className="delete-btn"
+                                onClick={(e) => { e.stopPropagation(); handleDelete(post.id); }}
+                              >
+                                Delete
+                              </button>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+
+                {/* Favorites pagination */}
+                {favorites.length > POSTS_PER_PAGE && (
+                  <div className="pagination">
+                    {Array.from({ length: Math.ceil(favorites.length / POSTS_PER_PAGE) }).map((_, i) => (
+                      <button key={i} className={`page-btn ${postsPage === i ? 'active' : ''}`} onClick={() => { setPostsPage(i); window.scrollTo({ top: 0, behavior: 'smooth' }); }}>
+                        {i + 1}
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+        )}
+
         {/* CAROUSEL MODAL */}
         {carouselOpen && (
           <div className="carousel" ref={carouselRef} style={{ position: 'fixed', inset: 0, zIndex: 50, background: 'rgba(0,0,0,0.8)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
@@ -705,6 +828,7 @@ function App() {
           </div>
         )}
         </main>
+        </div>
       </div>
     </div>
   );
