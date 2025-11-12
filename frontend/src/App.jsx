@@ -1,12 +1,11 @@
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect } from 'react';
 import { api } from './api';
 import './App.css';
 
 function App() {
-  // Core state
   const [currentUser, setCurrentUser] = useState(null);
-  const [users, setUsers] = useState([]);
   const [posts, setPosts] = useState([]);
+  const [pools, setPools] = useState([]);
   const [tags, setTags] = useState([]);
   const [selectedTag, setSelectedTag] = useState(null);
   const [tagSearch, setTagSearch] = useState(''); // search input for tags (comma-separated)
@@ -30,20 +29,14 @@ function App() {
   const [uploadFile, setUploadFile] = useState(null);
   const [uploadDescription, setUploadDescription] = useState('');
   const [uploadTags, setUploadTags] = useState('');
+  const [poolName, setPoolName] = useState('');
+  const [poolDescription, setPoolDescription] = useState('');
+  const [poolSearchQuery, setPoolSearchQuery] = useState('');
+  const [showAddToPool, setShowAddToPool] = useState(false);
 
-  // Detail state
-  const [selectedPost, setSelectedPost] = useState(null);
-  const [selectedPool, setSelectedPool] = useState(null);
-
-  // Carousel
-  const [carouselOpen, setCarouselOpen] = useState(false);
-  const [carouselItems, setCarouselItems] = useState([]);
-  const [carouselIndex, setCarouselIndex] = useState(0);
-  const carouselRef = useRef();
-
-  // quick load on mount and when selectedTag changes
   useEffect(() => {
-    loadAll();
+    checkAuth();
+    loadData();
   }, [selectedTag]);
 
   useEffect(() => {
@@ -63,38 +56,18 @@ function App() {
     })();
   }, []);
 
-  const loadAll = async () => {
+  const loadData = async () => {
     try {
-      const [postsRes, tagsRes, usersRes, poolsRes] = await Promise.all([
-        api.getPosts(),
+      const [postsRes, tagsRes, poolsRes] = await Promise.all([
+        api.getPosts(selectedTag),
         api.getTags(),
-        api.getUsers(),
         api.getPools()
       ]);
-      setPosts(postsRes.data || []);
-      setTags(tagsRes.data || []);
-      setUsers(usersRes.data || []);
-      setPools(poolsRes.data || []);
+      setPosts(postsRes.data);
+      setTags(tagsRes.data);
+      setPools(poolsRes.data);
     } catch (error) {
       console.error('Error loading data:', error);
-    }
-  };
-
-  // AUTH: register, login, logout
-  const handleRegister = async (e) => {
-    e.preventDefault();
-    try {
-      await api.register(username, password);
-      // try auto-login
-      await api.login(username, password);
-      const me = await api.getMe();
-      setCurrentUser(me.data || null);
-      setUsername('');
-      setPassword('');
-      setView('posts');
-      loadAll();
-    } catch (error) {
-      alert(error.response?.data?.detail || 'Error creating user');
     }
   };
 
@@ -102,8 +75,21 @@ function App() {
     e.preventDefault();
     try {
       await api.login(username, password);
-      const me = await api.getMe();
-      setCurrentUser(me.data || null);
+      await checkAuth();
+      setUsername('');
+      setPassword('');
+      setView('posts');
+      loadData();
+    } catch (error) {
+      alert(error.response?.data?.detail || 'Login failed');
+    }
+  };
+
+  const handleRegister = async (e) => {
+    e.preventDefault();
+    try {
+      await api.register(username, password);
+      alert('Registration successful! Please login.');
       setUsername('');
       setPassword('');
       setView('posts');
@@ -112,26 +98,22 @@ function App() {
       const favs = await api.getUserFavorites(me.data.id);
       setFavorites(favs.data || []);
     } catch (error) {
-      alert(error.response?.data?.detail || 'Login failed');
+      alert(error.response?.data?.detail || 'Registration failed');
     }
   };
 
   const handleLogout = async () => {
     try {
       await api.logout();
-    } catch (e) {
-      // ignore
+      setCurrentUser(null);
+      setView('posts');
+    } catch (error) {
+      console.error('Logout error:', error);
     }
-    setCurrentUser(null);
   };
 
-  // UPLOAD
   const handleUpload = async (e) => {
     e.preventDefault();
-    if (!currentUser) {
-      alert('Please login or select a user first!');
-      return;
-    }
     if (!uploadFile) {
       alert('Please select an image!');
       return;
@@ -139,7 +121,6 @@ function App() {
 
     const formData = new FormData();
     formData.append('image', uploadFile);
-    formData.append('uploader_id', currentUser.id);
     formData.append('description', uploadDescription);
     formData.append('tags', uploadTags);
 
@@ -150,9 +131,9 @@ function App() {
       setUploadDescription('');
       setUploadTags('');
       setView('posts');
-      loadAll();
+      loadData();
     } catch (error) {
-      alert(error.response?.data?.detail || 'Error uploading post');
+      alert(error.response?.data?.detail || 'Upload failed');
     }
   };
 
@@ -160,19 +141,14 @@ function App() {
     if (!confirm('Delete this post?')) return;
     try {
       await api.deletePost(postId);
-      loadAll();
-      // if deleted while viewing detail, go back
-      if (selectedPost?.id === postId) {
-        setSelectedPost(null);
-        setView('posts');
-      }
+      loadData();
+      if (view === 'post-detail') setView('posts');
     } catch (error) {
       alert('Error deleting post');
     }
   };
 
-  // POST DETAIL
-  const openPost = async (postId) => {
+  const viewPost = async (postId) => {
     try {
       const res = await api.getPost(postId);
       const post = res.data;
@@ -194,11 +170,7 @@ function App() {
     }
   };
 
-  const toggleFavorite = async (postId) => {
-    if (!currentUser) {
-      alert('Please login to favorite posts');
-      return;
-    }
+  const handleToggleFavorite = async (postId) => {
     try {
       const res = await api.toggleFavorite(postId);
       // the API could return updated post or status; refresh selected post if open
@@ -298,40 +270,45 @@ function App() {
       await api.createPool(name, description);
       loadPools();
       setView('pools');
-    } catch (e) {
+      loadData();
+    } catch (error) {
       alert('Error creating pool');
     }
   };
 
-  const openPool = async (poolId) => {
+  const viewPool = async (poolId) => {
     try {
       const res = await api.getPool(poolId);
       setSelectedPool(res.data);
-      setView('poolDetail');
-    } catch (e) {
+      setPoolCarouselIndex(0);
+      setShowCarousel(false);
+      setView('pool-detail');
+    } catch (error) {
       alert('Error loading pool');
     }
   };
 
-  const addPostToPool = async (poolId, postId) => {
+  const handleAddToPool = async (poolId) => {
+    if (!selectedPost) return;
     try {
-      await api.addPostToPool(poolId, postId);
-      // refresh pool detail
-      const res = await api.getPool(poolId);
-      setSelectedPool(res.data);
-      alert('Post added to pool');
-    } catch (e) {
-      alert('Error adding post to pool');
+      await api.addPostToPool(poolId, selectedPost.id);
+      alert('Added to pool!');
+      setShowAddToPool(false);
+      setPoolSearchQuery('');
+      const res = await api.getPost(selectedPost.id);
+      setSelectedPost(res.data);
+    } catch (error) {
+      alert(error.response?.data?.detail || 'Error adding to pool');
     }
   };
 
-  const removePostFromPool = async (poolId, postId) => {
+  const handleRemoveFromPool = async (poolId, postId) => {
+    if (!confirm('Remove from pool?')) return;
     try {
       await api.removePostFromPool(poolId, postId);
-      const res = await api.getPool(poolId);
-      setSelectedPool(res.data);
-    } catch (e) {
-      alert('Error removing post from pool');
+      viewPool(poolId);
+    } catch (error) {
+      alert('Error removing from pool');
     }
   };
 
@@ -404,15 +381,14 @@ function App() {
             <button onClick={() => { setView('favorites'); setPostsPage(0); }}>Favorites</button>
           )}
         </nav>
-
-        <div style={{ marginLeft: 'auto', display: 'flex', gap: '1rem', alignItems: 'center' }}>
+        <div className="user-info">
           {currentUser ? (
             <>
-              <div>Signed in: <strong>{currentUser.username}</strong></div>
+              <span>👤 {currentUser.username}</span>
               <button onClick={handleLogout}>Logout</button>
             </>
           ) : (
-            <div>Not signed in</div>
+            <span>Not logged in</span>
           )}
         </div>
       </header>
@@ -677,28 +653,30 @@ function App() {
                 </div>
               </div>
             </div>
-          </div>
+          </>
         )}
 
         {/* POOLS VIEW */}
         {view === 'pools' && (
           <div className="pools-view">
             <div className="pools-header">
-              <h2>Pools</h2>
-              <CreatePoolForm onCreate={handleCreatePool} />
+              <h2>All Pools</h2>
+              {currentUser && (
+                <button onClick={() => setView('create-pool')}>Create Pool</button>
+              )}
             </div>
-
             <div className="pools-grid">
               {pools.slice(poolsPage * POOLS_PER_PAGE, (poolsPage + 1) * POOLS_PER_PAGE).map(pool => (
                 <div key={pool.id} className="pool-card" onClick={() => openPool(pool.id)}>
                   <h3>{pool.name}</h3>
-                  <p>{pool.description}</p>
+                  <p>{pool.description || 'No description'}</p>
                   <div className="pool-meta">
                     <small>by {pool.creator_username || pool.creator_id}</small>
                     <small>{poolPostCount(pool)} posts</small>
                   </div>
                 </div>
               ))}
+              {pools.length === 0 && <p>No pools yet. Create one!</p>}
             </div>
 
             {/* Pools pagination */}
@@ -721,7 +699,7 @@ function App() {
               <div>
                 <h2>{selectedPool.name}</h2>
                 <p>{selectedPool.description}</p>
-                <small>by {selectedPool.creator_username || selectedPool.creator_id}</small>
+                <small>Created by {selectedPool.creator_username} • {selectedPool.post_count} posts</small>
               </div>
               <div className="pool-actions">
                 <button onClick={() => openCarouselWith(selectedPool.posts || [], 0)} disabled={poolPostCount(selectedPool) === 0}>Open Carousel</button>
@@ -744,6 +722,54 @@ function App() {
                       </div>
                     </div>
                   </div>
+                ))}
+                {selectedPool.posts.length === 0 && <p>This pool is empty.</p>}
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* FAVORITES VIEW */}
+        {view === 'favorites' && (
+          <div>
+            <h2 style={{ marginBottom: '1.5rem' }}>My Favorites</h2>
+            {!currentUser ? (
+              <p>Please login to see your favorites</p>
+            ) : favorites.length === 0 ? (
+              <p>You haven't favorited any posts yet</p>
+            ) : (
+              <div>
+                <div className="posts-grid">
+                  {favorites.slice(postsPage * POSTS_PER_PAGE, (postsPage + 1) * POSTS_PER_PAGE).map(post => (
+                    <div key={post.id} className="post-card" onClick={() => onPostCardClick(post)}>
+                      <img 
+                        src={`http://localhost:8000/uploads/${post.image_filename}`} 
+                        alt={post.description || 'Post'}
+                      />
+                      <div className="post-info">
+                        <p className="post-desc">{post.description || 'No description'}</p>
+                        <div className="post-tags">
+                          {(post.tags || []).map(tag => (
+                            <span key={tag} className="tag">{tag}</span>
+                          ))}
+                        </div>
+                        <div className="post-meta">
+                          <small>by {post.uploader_username}</small>
+                          <div>
+                            <small style={{ marginRight: 8 }}>{post.favorite_count ?? 0} ★</small>
+                            {currentUser?.id === post.uploader_id && (
+                              <button 
+                                className="delete-btn"
+                                onClick={(e) => { e.stopPropagation(); handleDelete(post.id); }}
+                              >
+                                Delete
+                              </button>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
                 </div>
               ))}
             </div>
@@ -808,41 +834,62 @@ function App() {
           </div>
         )}
 
-        {/* CAROUSEL MODAL */}
-        {carouselOpen && (
-          <div className="carousel" ref={carouselRef} style={{ position: 'fixed', inset: 0, zIndex: 50, background: 'rgba(0,0,0,0.8)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-            <button className="carousel-btn" onClick={prevCarousel} style={{ background: '#fff', color: '#000' }}>◀</button>
-            <div className="carousel-content" style={{ maxWidth: '80%', textAlign: 'center' }}>
-              {carouselItems[carouselIndex] && (
-                <>
-                  <img src={`http://localhost:8000/uploads/${carouselItems[carouselIndex].image_filename || carouselItems[carouselIndex].filename}`} alt="carousel" style={{ maxHeight: '70vh', objectFit: 'contain' }} />
-                  <div className="carousel-info" style={{ marginTop: 8 }}>
-                    <p>{carouselItems[carouselIndex].description}</p>
-                    <small>by {carouselItems[carouselIndex].uploader_username}</small>
+        {/* POSTS VIEW */}
+        {view === 'posts' && (
+          <>
+            <aside className="sidebar">
+              <h3>Tags</h3>
+              <div className="tag-list">
+                <button 
+                  className={!selectedTag ? 'active' : ''}
+                  onClick={() => setSelectedTag(null)}
+                >
+                  All Posts ({posts.length})
+                </button>
+                {tags.map(tag => (
+                  <button
+                    key={tag.id}
+                    className={selectedTag === tag.tag_name ? 'active' : ''}
+                    onClick={() => setSelectedTag(tag.tag_name)}
+                  >
+                    {tag.tag_name} ({tag.post_count})
+                  </button>
+                ))}
+              </div>
+            </aside>
+
+            <main className="posts-grid">
+              {posts.length === 0 ? (
+                <p>No posts yet. Upload some!</p>
+              ) : (
+                posts.map(post => (
+                  <div key={post.id} className="post-card" onClick={() => viewPost(post.id)}>
+                    <img 
+                      src={`http://localhost:8000/uploads/${post.image_filename}`} 
+                      alt={post.description || 'Post'}
+                    />
+                    <div className="post-info">
+                      <p className="post-desc">{post.description || 'No description'}</p>
+                      <div className="post-tags">
+                        {post.tags.map(tag => (
+                          <span key={tag} className="tag">{tag}</span>
+                        ))}
+                      </div>
+                      <div className="post-meta">
+                        <small>by {post.uploader_username}</small>
+                        <small>★ {post.favorite_count}</small>
+                      </div>
+                    </div>
                   </div>
-                </>
+                ))
               )}
-            </div>
-            <button className="carousel-btn" onClick={nextCarousel} style={{ background: '#fff', color: '#000' }}>▶</button>
-            <button onClick={closeCarousel} style={{ position: 'absolute', top: 20, right: 20, padding: 8 }}>Close</button>
-          </div>
+            </main>
+          </>
         )}
         </main>
         </div>
       </div>
     </div>
-  );
-}
-
-function CreatePoolForm({ onCreate }) {
-  const [name, setName] = useState('');
-  const [desc, setDesc] = useState('');
-  return (
-    <form className="pool-create-form" onSubmit={(e) => { e.preventDefault(); if (!name) return; onCreate(name, desc); setName(''); setDesc(''); }}>
-      <input className="pool-create-input" placeholder="Pool name" value={name} onChange={(e) => setName(e.target.value)} required />
-      <input className="pool-create-input" placeholder="Description" value={desc} onChange={(e) => setDesc(e.target.value)} />
-      <button type="submit" className="pool-create-btn">Create Pool</button>
-    </form>
   );
 }
 
