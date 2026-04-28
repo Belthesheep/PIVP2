@@ -11,6 +11,19 @@ import os
 import shutil
 import secrets
 import re
+from analytics_service import (
+    get_post_count,
+    get_user_count,
+    get_folder_size_mb,
+    get_activity_by_period,
+    log_activity,
+    get_summary_report,
+    get_top_uploaders,
+    get_post_statistics,
+    get_pool_statistics,
+    get_tag_statistics,
+    get_activity_log,
+)
 
 # Database setup
 DB_NAME = "sheepbooru.db"
@@ -347,6 +360,9 @@ async def create_post(
     conn.commit()
     conn.close()
     
+    # Log activity
+    log_activity(user["id"], "upload", post_id=post_id)
+    
     return {"id": post_id, "message": "Post created successfully", "tags": tag_list}
 
 @app.get("/api/posts")
@@ -490,6 +506,9 @@ async def delete_post(post_id: int, user = Depends(require_auth)):
     cursor.execute("DELETE FROM posts WHERE id = ?", (post_id,))
     conn.commit()
     conn.close()
+    
+    # Log activity
+    log_activity(user["id"], "delete", post_id=post_id)
     
     return {"message": "Post deleted successfully"}
 
@@ -816,6 +835,67 @@ async def list_tags():
     conn.close()
     
     return [dict(t) for t in tags]
+
+# ============== REPORTING ENDPOINTS ==============
+
+@app.get("/api/reports/summary")
+async def get_report_summary(user = Depends(require_auth)):
+    """Get comprehensive summary report (admin only)"""
+    if not user.get("is_admin"):
+        raise HTTPException(status_code=403, detail="Only admins can access reports")
+    
+    return get_summary_report()
+
+@app.get("/api/reports/activity")
+async def get_activity_report(period: str = "day", user = Depends(require_auth)):
+    """Get activity report for specified period (admin only)"""
+    if not user.get("is_admin"):
+        raise HTTPException(status_code=403, detail="Only admins can access reports")
+    
+    if period not in ["day", "week", "month"]:
+        raise HTTPException(status_code=400, detail="Period must be 'day', 'week', or 'month'")
+    
+    return get_activity_by_period(period)
+
+@app.get("/api/reports/posts")
+async def get_posts_report(user = Depends(require_auth)):
+    """Get post statistics report (admin only)"""
+    if not user.get("is_admin"):
+        raise HTTPException(status_code=403, detail="Only admins can access reports")
+    
+    return get_post_statistics()
+
+@app.get("/api/reports/pools")
+async def get_pools_report(user = Depends(require_auth)):
+    """Get pool statistics report (admin only)"""
+    if not user.get("is_admin"):
+        raise HTTPException(status_code=403, detail="Only admins can access reports")
+    
+    return get_pool_statistics()
+
+@app.get("/api/reports/tags")
+async def get_tags_report(limit: int = 20, user = Depends(require_auth)):
+    """Get tag statistics report (admin only)"""
+    if not user.get("is_admin"):
+        raise HTTPException(status_code=403, detail="Only admins can access reports")
+    
+    return get_tag_statistics(limit)
+
+@app.get("/api/reports/top-uploaders")
+async def get_top_uploaders_report(limit: int = 10, user = Depends(require_auth)):
+    """Get top uploaders report (admin only)"""
+    if not user.get("is_admin"):
+        raise HTTPException(status_code=403, detail="Only admins can access reports")
+    
+    return {"top_uploaders": get_top_uploaders(limit)}
+
+@app.get("/api/reports/activity-log")
+async def get_activity_log_report(limit: int = 100, action_type: Optional[str] = None, user = Depends(require_auth)):
+    """Get activity log entries (admin only)"""
+    if not user.get("is_admin"):
+        raise HTTPException(status_code=403, detail="Only admins can access reports")
+    
+    return {"activity_log": get_activity_log(limit, action_type)}
 
 # ============== ROOT ==============
 

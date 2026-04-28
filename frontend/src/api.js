@@ -76,5 +76,27 @@ export const api = {
   
   // Tags
   getTags: () => 
-    axios.get(`${API_BASE}/tags`)
+    axios.get(`${API_BASE}/tags`),
+  
+  // Reports (Admin only)
+  getReportSummary: () =>
+    axios.get(`${API_BASE}/reports/summary`),
+  
+  getActivityReport: (period = 'day') =>
+    axios.get(`${API_BASE}/reports/activity`, { params: { period } }),
+  
+  getPostsReport: () =>
+    axios.get(`${API_BASE}/reports/posts`),
+  
+  getPoolsReport: () =>
+    axios.get(`${API_BASE}/reports/pools`),
+  
+  getTagsReport: (limit = 20) =>
+    axios.get(`${API_BASE}/reports/tags`, { params: { limit } }),
+  
+  getTopUploadersReport: (limit = 10) =>
+    axios.get(`${API_BASE}/reports/top-uploaders`, { params: { limit } }),
+  
+  getActivityLog: (limit = 100, actionType = null) =>
+    axios.get(`${API_BASE}/reports/activity-log`, { params: { limit, action_type: actionType } }),
 };
