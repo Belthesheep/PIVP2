@@ -7,13 +7,15 @@ def init_db():
     conn = sqlite3.connect(DB_NAME)
     cursor = conn.cursor()
     
-    # Users table
+    # Users table (3NF normalized with email and T&C fields)
     cursor.execute("""
         CREATE TABLE IF NOT EXISTS users (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             username TEXT NOT NULL UNIQUE,
+            email TEXT UNIQUE,
             password_hash TEXT NOT NULL,
             is_admin BOOLEAN NOT NULL DEFAULT 0,
+            accepted_tos BOOLEAN NOT NULL DEFAULT 0,
             created_at DATETIME NOT NULL
         )
     """)
@@ -86,10 +88,60 @@ def init_db():
         )
     """)
     
+    # Activity log table (for reporting and analytics)
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS activity_log (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id INTEGER NOT NULL,
+            action_type TEXT NOT NULL,
+            post_id INTEGER,
+            pool_id INTEGER,
+            timestamp DATETIME NOT NULL,
+            FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+            FOREIGN KEY (post_id) REFERENCES posts(id) ON DELETE SET NULL,
+            FOREIGN KEY (pool_id) REFERENCES pools(id) ON DELETE SET NULL
+        )
+    """)
+    
+    # Password reset tokens table (for password recovery)
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS password_reset_tokens (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id INTEGER NOT NULL UNIQUE,
+            token TEXT NOT NULL UNIQUE,
+            created_at DATETIME NOT NULL,
+            expires_at DATETIME NOT NULL,
+            FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+        )
+    """)
+    
+    # Terms and Conditions versions table
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS terms_and_conditions (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            version TEXT NOT NULL UNIQUE,
+            content TEXT NOT NULL,
+            created_at DATETIME NOT NULL
+        )
+    """)
+    
+    # User T&C acceptance records
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS user_tos_acceptance (
+            user_id INTEGER NOT NULL,
+            tos_id INTEGER NOT NULL,
+            accepted_at DATETIME NOT NULL,
+            PRIMARY KEY (user_id, tos_id),
+            FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+            FOREIGN KEY (tos_id) REFERENCES terms_and_conditions(id) ON DELETE CASCADE
+        )
+    """)
+    
     conn.commit()
     conn.close()
-    print(f"Database '{DB_NAME}' initialized successfully with 7 tables!")
-    print("Tables: users, posts, tags, post_tags, favorites, pools, pool_posts")
+    print(f"Database '{DB_NAME}' initialized successfully with 11 tables!")
+    print("Tables: users, posts, tags, post_tags, favorites, pools, pool_posts,")
+    print("        activity_log, password_reset_tokens, terms_and_conditions, user_tos_acceptance")
 
 if __name__ == "__main__":
     init_db()
