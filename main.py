@@ -2,7 +2,7 @@ from fastapi import FastAPI, HTTPException, UploadFile, File, Form, Depends, Coo
 from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, EmailStr
 from typing import List, Optional
 import sqlite3
 import datetime
@@ -10,6 +10,7 @@ import hashlib
 import os
 import shutil
 import secrets
+import re
 
 # Database setup
 DB_NAME = "sheepbooru.db"
@@ -31,11 +32,19 @@ def get_db():
 # Pydantic Models
 class UserCreate(BaseModel):
     username: str = Field(..., min_length=3)
+    email: str = Field(..., min_length=5)
     password: str = Field(..., min_length=6)
 
 class UserLogin(BaseModel):
-    username: str
-    password: str
+    username_or_email: str = Field(..., min_length=3)
+    password: str = Field(..., min_length=6)
+
+class PasswordResetRequest(BaseModel):
+    email: str = Field(..., min_length=5)
+
+class PasswordReset(BaseModel):
+    token: str = Field(..., min_length=1)
+    new_password: str = Field(..., min_length=6)
 
 class User(BaseModel):
     id: int
@@ -101,38 +110,53 @@ def require_auth(session_token: Optional[str] = Cookie(None)):
 
 @app.post("/api/auth/register", status_code=201)
 async def register(user: UserCreate):
-    """Register a new user"""
+    """Register a new user with email"""
     conn = get_db()
     cursor = conn.cursor()
     
+    # Validate email format
+    email_regex = r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$'
+    if not re.match(email_regex, user.email):
+        conn.close()
+        raise HTTPException(status_code=400, detail="Invalid email format")
+    
+    # Check if username exists
     cursor.execute("SELECT id FROM users WHERE username = ?", (user.username,))
     if cursor.fetchone():
         conn.close()
         raise HTTPException(status_code=409, detail="Username already exists")
     
+    # Check if email exists
+    cursor.execute("SELECT id FROM users WHERE email = ?", (user.email,))
+    if cursor.fetchone():
+        conn.close()
+        raise HTTPException(status_code=409, detail="Email already registered")
+    
     password_hash = hash_password(user.password)
     created_at = datetime.datetime.now().isoformat()
     
     cursor.execute(
-        "INSERT INTO users (username, password_hash, is_admin, created_at) VALUES (?, ?, 0, ?)",
-        (user.username, password_hash, created_at)
+        "INSERT INTO users (username, email, password_hash, is_admin, accepted_tos, created_at) VALUES (?, ?, ?, 0, 0, ?)",
+        (user.username, user.email, password_hash, created_at)
     )
     conn.commit()
     user_id = cursor.lastrowid
     conn.close()
     
-    return {"id": user_id, "username": user.username, "message": "User created successfully"}
+    return {"id": user_id, "username": user.username, "email": user.email, "message": "User created successfully"}
 
 @app.post("/api/auth/login")
 async def login(credentials: UserLogin):
-    """Login and create session"""
+    """Login with username or email"""
     conn = get_db()
     cursor = conn.cursor()
     
     password_hash = hash_password(credentials.password)
+    
+    # Try to login with username or email
     cursor.execute(
-        "SELECT id, username, is_admin, created_at FROM users WHERE username = ? AND password_hash = ?",
-        (credentials.username, password_hash)
+        "SELECT id, username, email, is_admin, created_at FROM users WHERE (username = ? OR email = ?) AND password_hash = ?",
+        (credentials.username_or_email, credentials.username_or_email, password_hash)
     )
     user = cursor.fetchone()
     conn.close()
@@ -142,10 +166,11 @@ async def login(credentials: UserLogin):
     
     # Create session
     session_token = secrets.token_hex(32)
-    sessions[session_token] = dict(user)
+    user_dict = dict(user)
+    sessions[session_token] = user_dict
     
     response = JSONResponse(content={
-        "user": dict(user),
+        "user": user_dict,
         "message": "Login successful"
     })
     response.set_cookie(
@@ -172,6 +197,106 @@ async def get_me(user = Depends(get_current_user)):
     if not user:
         raise HTTPException(status_code=401, detail="Not authenticated")
     return user
+
+@app.post("/api/auth/request-password-reset")
+async def request_password_reset(request: PasswordResetRequest):
+    """Request a password reset token via email"""
+    conn = get_db()
+    cursor = conn.cursor()
+    
+    # Find user by email
+    cursor.execute("SELECT id, username, email FROM users WHERE email = ?", (request.email,))
+    user = cursor.fetchone()
+    
+    if not user:
+        # Don't reveal if email exists or not for security
+        conn.close()
+        return {"message": "If the email is registered, a password reset link has been sent"}
+    
+    # Generate reset token (valid for 1 hour)
+    reset_token = secrets.token_urlsafe(32)
+    created_at = datetime.datetime.now().isoformat()
+    expires_at = (datetime.datetime.now() + datetime.timedelta(hours=1)).isoformat()
+    
+    # Delete any existing reset tokens for this user
+    cursor.execute("DELETE FROM password_reset_tokens WHERE user_id = ?", (user["id"],))
+    
+    # Store new reset token
+    cursor.execute(
+        "INSERT INTO password_reset_tokens (user_id, token, created_at, expires_at) VALUES (?, ?, ?, ?)",
+        (user["id"], reset_token, created_at, expires_at)
+    )
+    conn.commit()
+    conn.close()
+    
+    # TODO: In production, send email with reset link
+    # For now, return the token (DON'T DO THIS IN PRODUCTION!)
+    print(f"[DEV] Password reset token for {user['email']}: {reset_token}")
+    
+    return {"message": "If the email is registered, a password reset link has been sent"}
+
+@app.post("/api/auth/validate-reset-token")
+async def validate_reset_token(token: str):
+    """Validate a password reset token"""
+    conn = get_db()
+    cursor = conn.cursor()
+    
+    cursor.execute(
+        "SELECT user_id, expires_at FROM password_reset_tokens WHERE token = ?",
+        (token,)
+    )
+    reset_record = cursor.fetchone()
+    conn.close()
+    
+    if not reset_record:
+        raise HTTPException(status_code=400, detail="Invalid reset token")
+    
+    # Check if token has expired
+    expires_at = datetime.datetime.fromisoformat(reset_record["expires_at"])
+    if datetime.datetime.now() > expires_at:
+        raise HTTPException(status_code=400, detail="Reset token has expired")
+    
+    return {"valid": True, "user_id": reset_record["user_id"]}
+
+@app.post("/api/auth/reset-password")
+async def reset_password(reset: PasswordReset):
+    """Reset password using token"""
+    conn = get_db()
+    cursor = conn.cursor()
+    
+    # Validate token
+    cursor.execute(
+        "SELECT user_id, expires_at FROM password_reset_tokens WHERE token = ?",
+        (reset.token,)
+    )
+    reset_record = cursor.fetchone()
+    
+    if not reset_record:
+        conn.close()
+        raise HTTPException(status_code=400, detail="Invalid reset token")
+    
+    # Check if token has expired
+    expires_at = datetime.datetime.fromisoformat(reset_record["expires_at"])
+    if datetime.datetime.now() > expires_at:
+        conn.close()
+        raise HTTPException(status_code=400, detail="Reset token has expired")
+    
+    # Hash new password and update user
+    password_hash = hash_password(reset.new_password)
+    user_id = reset_record["user_id"]
+    
+    cursor.execute(
+        "UPDATE users SET password_hash = ? WHERE id = ?",
+        (password_hash, user_id)
+    )
+    
+    # Delete the used reset token
+    cursor.execute("DELETE FROM password_reset_tokens WHERE token = ?", (reset.token,))
+    
+    conn.commit()
+    conn.close()
+    
+    return {"message": "Password reset successfully"}
 
 # ============== USER ENDPOINTS ==============
 

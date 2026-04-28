@@ -7,7 +7,7 @@ export function PostCard({ post, currentUserId, onCardClick, onDelete }) {
   }, [post.id, onDelete]);
 
   return (
-    <div className="post-card" onClick={() => onCardClick(post)}>
+    <div className="post-card" onClick={() => onCardClick(post.id)}>
       <img
         src={`http://localhost:8000/uploads/${post.image_filename}`}
         alt={post.description || 'Post'}

@@ -7,17 +7,27 @@ axios.defaults.withCredentials = true;
 
 export const api = {
   // Auth
-  register: (username, password) => 
-    axios.post(`${API_BASE}/auth/register`, { username, password }),
+  register: (username, email, password) => 
+    axios.post(`${API_BASE}/auth/register`, { username, email, password }),
   
-  login: (username, password) => 
-    axios.post(`${API_BASE}/auth/login`, { username, password }),
+  login: (usernameOrEmail, password) => 
+    axios.post(`${API_BASE}/auth/login`, { username_or_email: usernameOrEmail, password }),
   
   logout: () => 
     axios.post(`${API_BASE}/auth/logout`),
   
   getMe: () => 
     axios.get(`${API_BASE}/auth/me`),
+  
+  // Password Recovery
+  requestPasswordReset: (email) =>
+    axios.post(`${API_BASE}/auth/request-password-reset`, { email }),
+  
+  validateResetToken: (token) =>
+    axios.post(`${API_BASE}/auth/validate-reset-token`, { token }),
+  
+  resetPassword: (token, newPassword) =>
+    axios.post(`${API_BASE}/auth/reset-password`, { token, new_password: newPassword }),
   
   // Users
   getUsers: () => 

@@ -1,6 +1,6 @@
 import { useCallback } from 'react';
 
-export function RegisterForm({ username, password, onUsernameChange, onPasswordChange, onSubmit }) {
+export function RegisterForm({ username, email, password, onUsernameChange, onEmailChange, onPasswordChange, onSubmit }) {
   const handleSubmit = useCallback((e) => {
     e.preventDefault();
     onSubmit();
@@ -15,6 +15,13 @@ export function RegisterForm({ username, password, onUsernameChange, onPasswordC
           placeholder="Username (min 3 chars)"
           value={username}
           onChange={(e) => onUsernameChange(e.target.value)}
+          required
+        />
+        <input
+          type="email"
+          placeholder="Email"
+          value={email}
+          onChange={(e) => onEmailChange(e.target.value)}
           required
         />
         <input

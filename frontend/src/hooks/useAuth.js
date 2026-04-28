@@ -4,23 +4,25 @@ import { api } from '../api';
 export function useAuth() {
   const [currentUser, setCurrentUser] = useState(null);
   const [username, setUsername] = useState('');
+  const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
 
   const handleRegister = useCallback(async (e) => {
     e.preventDefault();
     try {
-      await api.register(username, password);
+      await api.register(username, email, password);
       await api.login(username, password);
       const me = await api.getMe();
       setCurrentUser(me.data || null);
       setUsername('');
+      setEmail('');
       setPassword('');
       return true;
     } catch (error) {
       alert(error.response?.data?.detail || 'Error creating user');
       return false;
     }
-  }, [username, password]);
+  }, [username, email, password]);
 
   const handleLogin = useCallback(async (e) => {
     e.preventDefault();
@@ -29,6 +31,7 @@ export function useAuth() {
       const me = await api.getMe();
       setCurrentUser(me.data || null);
       setUsername('');
+      setEmail('');
       setPassword('');
       return true;
     } catch (error) {
@@ -61,6 +64,8 @@ export function useAuth() {
     setCurrentUser,
     username,
     setUsername,
+    email,
+    setEmail,
     password,
     setPassword,
     handleRegister,

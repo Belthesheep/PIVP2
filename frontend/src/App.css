@@ -265,6 +265,41 @@ main {
   color: #fff;
 }
 
+.auth-form-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  padding: 2rem 1rem;
+}
+
+.error-message {
+  padding: 0.8rem;
+  background-color: #ffcccc;
+  border: 1px solid #ff6b6b;
+  border-radius: 4px;
+  color: #d32f2f;
+  margin-bottom: 1rem;
+  text-align: center;
+}
+
+.auth-link-button {
+  background: none;
+  border: none;
+  color: #1e6ed8;
+  cursor: pointer;
+  text-decoration: underline;
+  font-size: 0.95rem;
+  padding: 0;
+  font-weight: 500;
+}
+
+.auth-link-button:hover {
+  color: #0d47a1;
+  text-decoration: none;
+}
+
 /* POST DETAIL */
 .post-detail {
   width: 100%;
@@ -672,12 +707,10 @@ main {
 .carousel {
   background: #fff;
   padding: 2rem;
-  border-radius: 8px;
   box-shadow: 0 2px 4px rgba(0,0,0,0.1);
   display: flex;
   align-items: center;
   gap: 2rem;
-  margin-bottom: 2rem;
 }
 
 .carousel-btn {

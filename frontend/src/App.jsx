@@ -16,6 +16,8 @@ import { Sidebar } from './components/Common/Sidebar';
 import { Carousel } from './components/Common/Carousel';
 import { LoginForm } from './components/Auth/LoginForm';
 import { RegisterForm } from './components/Auth/RegisterForm';
+import { ForgotPasswordForm } from './components/Auth/ForgotPasswordForm';
+import { ResetPasswordForm } from './components/Auth/ResetPasswordForm';
 import { PostDetail } from './components/Posts/PostDetail';
 import { UploadForm } from './components/Posts/UploadForm';
 import { PoolDetail } from './components/Pools/PoolDetail';
@@ -212,7 +214,7 @@ function App() {
 
       <div className="app-content">
         {/* Sidebar */}
-        {(view !== 'register' && view !== 'login' && view !== 'upload' && view !== 'favorites') && (
+        {(view !== 'register' && view !== 'login' && view !== 'forgotPassword' && view !== 'resetPassword' && view !== 'upload' && view !== 'favorites') && (
           <Sidebar
             tags={tags.tags}
             selectedTag={tags.selectedTag}
@@ -242,8 +244,10 @@ function App() {
           {view === 'register' && (
             <RegisterForm
               username={auth.username}
+              email={auth.email}
               password={auth.password}
               onUsernameChange={auth.setUsername}
+              onEmailChange={auth.setEmail}
               onPasswordChange={auth.setPassword}
               onSubmit={handleRegister}
             />
@@ -251,13 +255,33 @@ function App() {
 
           {/* LOGIN VIEW */}
           {view === 'login' && (
-            <LoginForm
-              username={auth.username}
-              password={auth.password}
-              onUsernameChange={auth.setUsername}
-              onPasswordChange={auth.setPassword}
-              onSubmit={handleLogin}
-            />
+            <div className="auth-form-container">
+              <LoginForm
+                username={auth.username}
+                password={auth.password}
+                onUsernameChange={auth.setUsername}
+                onPasswordChange={auth.setPassword}
+                onSubmit={handleLogin}
+              />
+              <div style={{ marginTop: '1rem', textAlign: 'center' }}>
+                <button 
+                  onClick={() => setView('forgotPassword')}
+                  className="auth-link-button"
+                >
+                  Forgot Password?
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* FORGOT PASSWORD VIEW */}
+          {view === 'forgotPassword' && (
+            <ForgotPasswordForm onBack={() => setView('login')} />
+          )}
+
+          {/* RESET PASSWORD VIEW */}
+          {view === 'resetPassword' && (
+            <ResetPasswordForm onBack={() => setView('login')} />
           )}
 
           {/* UPLOAD VIEW */}

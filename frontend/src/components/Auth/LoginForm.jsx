@@ -12,7 +12,7 @@ export function LoginForm({ username, password, onUsernameChange, onPasswordChan
       <form onSubmit={handleSubmit}>
         <input
           type="text"
-          placeholder="Username"
+          placeholder="Username or Email"
           value={username}
           onChange={(e) => onUsernameChange(e.target.value)}
           required
