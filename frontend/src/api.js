@@ -99,4 +99,14 @@ export const api = {
   
   getActivityLog: (limit = 100, actionType = null) =>
     axios.get(`${API_BASE}/reports/activity-log`, { params: { limit, action_type: actionType } }),
+  
+  // Report Exports
+  exportReportCSV: (reportType = 'summary') =>
+    axios.get(`${API_BASE}/reports/export/csv`, { params: { report_type: reportType }, responseType: 'blob' }),
+  
+  exportReportJSON: (reportType = 'summary') =>
+    axios.get(`${API_BASE}/reports/export/json`, { params: { report_type: reportType }, responseType: 'blob' }),
+  
+  exportReportPDF: (reportType = 'summary') =>
+    axios.get(`${API_BASE}/reports/export/pdf`, { params: { report_type: reportType }, responseType: 'blob' }),
 };

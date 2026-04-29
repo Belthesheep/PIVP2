@@ -103,6 +103,57 @@ export function useReports() {
     }
   }, []);
 
+  const exportReportCSV = useCallback(async (reportType = 'summary') => {
+    setError(null);
+    try {
+      const res = await api.exportReportCSV(reportType);
+      const url = window.URL.createObjectURL(new Blob([res.data]));
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', `report_${reportType}_${new Date().toISOString().split('T')[0]}.csv`);
+      document.body.appendChild(link);
+      link.click();
+      link.parentNode.removeChild(link);
+      window.URL.revokeObjectURL(url);
+    } catch (err) {
+      setError(err.response?.data?.detail || 'Failed to export CSV report');
+    }
+  }, []);
+
+  const exportReportJSON = useCallback(async (reportType = 'summary') => {
+    setError(null);
+    try {
+      const res = await api.exportReportJSON(reportType);
+      const url = window.URL.createObjectURL(new Blob([res.data]));
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', `report_${reportType}_${new Date().toISOString().split('T')[0]}.json`);
+      document.body.appendChild(link);
+      link.click();
+      link.parentNode.removeChild(link);
+      window.URL.revokeObjectURL(url);
+    } catch (err) {
+      setError(err.response?.data?.detail || 'Failed to export JSON report');
+    }
+  }, []);
+
+  const exportReportPDF = useCallback(async (reportType = 'summary') => {
+    setError(null);
+    try {
+      const res = await api.exportReportPDF(reportType);
+      const url = window.URL.createObjectURL(new Blob([res.data]));
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', `report_${reportType}_${new Date().toISOString().split('T')[0]}.pdf`);
+      document.body.appendChild(link);
+      link.click();
+      link.parentNode.removeChild(link);
+      window.URL.revokeObjectURL(url);
+    } catch (err) {
+      setError(err.response?.data?.detail || 'Failed to export PDF report');
+    }
+  }, []);
+
   return {
     summary,
     activityReport,
@@ -120,5 +171,8 @@ export function useReports() {
     loadTagsReport,
     loadUploadersReport,
     loadActivityLog,
+    exportReportCSV,
+    exportReportJSON,
+    exportReportPDF,
   };
 }

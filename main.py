@@ -1,7 +1,7 @@
 from fastapi import FastAPI, HTTPException, UploadFile, File, Form, Depends, Cookie
 from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, StreamingResponse
 from pydantic import BaseModel, Field, EmailStr
 from typing import List, Optional
 import sqlite3
@@ -24,6 +24,7 @@ from analytics_service import (
     get_tag_statistics,
     get_activity_log,
 )
+from export_service import generate_csv_report, generate_json_report, generate_pdf_report
 
 # Database setup
 DB_NAME = "sheepbooru.db"
@@ -896,6 +897,71 @@ async def get_activity_log_report(limit: int = 100, action_type: Optional[str] =
         raise HTTPException(status_code=403, detail="Only admins can access reports")
     
     return {"activity_log": get_activity_log(limit, action_type)}
+
+# ============== EXPORT ENDPOINTS ==============
+
+@app.get("/api/reports/export/csv")
+async def export_report_csv(report_type: str = "summary", user = Depends(require_auth)):
+    """Export report as CSV (admin only)"""
+    if not user.get("is_admin"):
+        raise HTTPException(status_code=403, detail="Only admins can export reports")
+    
+    if report_type not in ["summary", "posts", "pools", "tags"]:
+        raise HTTPException(status_code=400, detail="Invalid report type")
+    
+    try:
+        csv_content = generate_csv_report(report_type)
+        filename = f"report_{report_type}_{datetime.datetime.now().strftime('%Y%m%d_%H%M%S')}.csv"
+        
+        return StreamingResponse(
+            iter([csv_content]),
+            media_type="text/csv",
+            headers={"Content-Disposition": f"attachment; filename={filename}"}
+        )
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error generating CSV: {str(e)}")
+
+@app.get("/api/reports/export/json")
+async def export_report_json(report_type: str = "summary", user = Depends(require_auth)):
+    """Export report as JSON (admin only)"""
+    if not user.get("is_admin"):
+        raise HTTPException(status_code=403, detail="Only admins can export reports")
+    
+    if report_type not in ["summary", "posts", "pools", "tags", "uploaders"]:
+        raise HTTPException(status_code=400, detail="Invalid report type")
+    
+    try:
+        json_content = generate_json_report(report_type)
+        filename = f"report_{report_type}_{datetime.datetime.now().strftime('%Y%m%d_%H%M%S')}.json"
+        
+        return StreamingResponse(
+            iter([json_content]),
+            media_type="application/json",
+            headers={"Content-Disposition": f"attachment; filename={filename}"}
+        )
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error generating JSON: {str(e)}")
+
+@app.get("/api/reports/export/pdf")
+async def export_report_pdf(report_type: str = "summary", user = Depends(require_auth)):
+    """Export report as PDF (admin only)"""
+    if not user.get("is_admin"):
+        raise HTTPException(status_code=403, detail="Only admins can export reports")
+    
+    if report_type not in ["summary", "posts", "pools"]:
+        raise HTTPException(status_code=400, detail="Invalid report type. PDF supports: summary, posts, pools")
+    
+    try:
+        pdf_content = generate_pdf_report(report_type)
+        filename = f"report_{report_type}_{datetime.datetime.now().strftime('%Y%m%d_%H%M%S')}.pdf"
+        
+        return StreamingResponse(
+            iter([pdf_content]),
+            media_type="application/pdf",
+            headers={"Content-Disposition": f"attachment; filename={filename}"}
+        )
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error generating PDF: {str(e)}")
 
 # ============== ROOT ==============
 
