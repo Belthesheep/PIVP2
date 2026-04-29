@@ -150,11 +150,24 @@ async def register(user: UserCreate):
     created_at = datetime.datetime.now().isoformat()
     
     cursor.execute(
-        "INSERT INTO users (username, email, password_hash, is_admin, accepted_tos, created_at) VALUES (?, ?, ?, 0, 0, ?)",
+        "INSERT INTO users (username, email, password_hash, is_admin, accepted_tos, created_at) VALUES (?, ?, ?, 0, 1, ?)",
         (user.username, user.email, password_hash, created_at)
     )
     conn.commit()
     user_id = cursor.lastrowid
+    
+    # Get current T&C version
+    cursor.execute("SELECT id FROM terms_and_conditions ORDER BY created_at DESC LIMIT 1")
+    tos_row = cursor.fetchone()
+    if tos_row:
+        tos_id = tos_row[0]
+        # Record T&C acceptance
+        cursor.execute(
+            "INSERT INTO user_tos_acceptance (user_id, tos_id, accepted_at) VALUES (?, ?, ?)",
+            (user_id, tos_id, created_at)
+        )
+        conn.commit()
+    
     conn.close()
     
     return {"id": user_id, "username": user.username, "email": user.email, "message": "User created successfully"}
@@ -962,6 +975,86 @@ async def export_report_pdf(report_type: str = "summary", user = Depends(require
         )
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error generating PDF: {str(e)}")
+
+# ============== TERMS & CONDITIONS ENDPOINTS ==============
+
+@app.get("/api/tos/current")
+async def get_current_tos():
+    """Get current Terms & Conditions"""
+    conn = get_db()
+    cursor = conn.cursor()
+    
+    cursor.execute("""
+        SELECT id, version, content, created_at FROM terms_and_conditions
+        ORDER BY created_at DESC
+        LIMIT 1
+    """)
+    
+    tos = cursor.fetchone()
+    conn.close()
+    
+    if not tos:
+        raise HTTPException(status_code=404, detail="Terms & Conditions not found")
+    
+    return dict(tos)
+
+@app.get("/api/tos/history")
+async def get_tos_history():
+    """Get all Terms & Conditions versions"""
+    conn = get_db()
+    cursor = conn.cursor()
+    
+    cursor.execute("""
+        SELECT id, version, created_at FROM terms_and_conditions
+        ORDER BY created_at DESC
+    """)
+    
+    versions = [dict(row) for row in cursor.fetchall()]
+    conn.close()
+    
+    return {"versions": versions}
+
+@app.get("/api/tos/{version_id}")
+async def get_tos_version(version_id: int):
+    """Get specific T&C version"""
+    conn = get_db()
+    cursor = conn.cursor()
+    
+    cursor.execute("SELECT id, version, content, created_at FROM terms_and_conditions WHERE id = ?", (version_id,))
+    tos = cursor.fetchone()
+    conn.close()
+    
+    if not tos:
+        raise HTTPException(status_code=404, detail="Terms & Conditions version not found")
+    
+    return dict(tos)
+
+@app.post("/api/tos")
+async def create_tos(content: str = Form(...), version: str = Form(...), user = Depends(require_auth)):
+    """Create new T&C version (admin only)"""
+    if not user.get("is_admin"):
+        raise HTTPException(status_code=403, detail="Only admins can create Terms & Conditions")
+    
+    conn = get_db()
+    cursor = conn.cursor()
+    
+    # Check if version already exists
+    cursor.execute("SELECT id FROM terms_and_conditions WHERE version = ?", (version,))
+    if cursor.fetchone():
+        conn.close()
+        raise HTTPException(status_code=409, detail="T&C version already exists")
+    
+    created_at = datetime.datetime.now().isoformat()
+    cursor.execute(
+        "INSERT INTO terms_and_conditions (version, content, created_at) VALUES (?, ?, ?)",
+        (version, content, created_at)
+    )
+    
+    conn.commit()
+    tos_id = cursor.lastrowid
+    conn.close()
+    
+    return {"id": tos_id, "version": version, "message": "Terms & Conditions created successfully"}
 
 # ============== ROOT ==============
 

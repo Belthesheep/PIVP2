@@ -109,4 +109,19 @@ export const api = {
   
   exportReportPDF: (reportType = 'summary') =>
     axios.get(`${API_BASE}/reports/export/pdf`, { params: { report_type: reportType }, responseType: 'blob' }),
+  
+  // Terms & Conditions
+  getCurrentTOS: () =>
+    axios.get(`${API_BASE}/tos/current`),
+  
+  getTOSHistory: () =>
+    axios.get(`${API_BASE}/tos/history`),
+  
+  getTOSVersion: (versionId) =>
+    axios.get(`${API_BASE}/tos/${versionId}`),
+  
+  createTOS: (content, version) =>
+    axios.post(`${API_BASE}/tos`, { content, version }, {
+      headers: { 'Content-Type': 'multipart/form-data' }
+    }),
 };

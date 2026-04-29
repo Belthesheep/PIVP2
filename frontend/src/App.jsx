@@ -18,6 +18,7 @@ import { LoginForm } from './components/Auth/LoginForm';
 import { RegisterForm } from './components/Auth/RegisterForm';
 import { ForgotPasswordForm } from './components/Auth/ForgotPasswordForm';
 import { ResetPasswordForm } from './components/Auth/ResetPasswordForm';
+import { TermsModal } from './components/Common/TermsModal';
 import { PostDetail } from './components/Posts/PostDetail';
 import { UploadForm } from './components/Posts/UploadForm';
 import { PoolDetail } from './components/Pools/PoolDetail';
@@ -42,6 +43,8 @@ function App() {
   const [selectedPost, setSelectedPost] = useState(null);
   const [postsPage, setPostsPage] = useState(0);
   const [poolsPage, setPoolsPage] = useState(0);
+  const [showTOSModal, setShowTOSModal] = useState(false);
+  const [tosAccepted, setTosAccepted] = useState(false);
 
   const POSTS_PER_PAGE = 16;
   const POOLS_PER_PAGE = 30;
@@ -88,6 +91,27 @@ function App() {
   };
 
   // Handle auth
+  const handleRegisterClick = () => {
+    // Show T&C modal first
+    setShowTOSModal(true);
+  };
+
+  const handleTOSAccept = async () => {
+    setTosAccepted(true);
+    setShowTOSModal(false);
+    // Now proceed with registration
+    const success = await auth.handleRegister(new Event('submit'));
+    if (success) {
+      setView('posts');
+      setTosAccepted(false);
+      await loadAllData();
+    }
+  };
+
+  const handleTOSDecline = () => {
+    setShowTOSModal(false);
+  };
+
   const handleRegister = async () => {
     const success = await auth.handleRegister(new Event('submit'));
     if (success) {
@@ -212,6 +236,12 @@ function App() {
         onLogout={handleLogout}
       />
 
+      <TermsModal 
+        isOpen={showTOSModal}
+        onAccept={handleTOSAccept}
+        onDecline={handleTOSDecline}
+      />
+
       <div className="app-content">
         {/* Sidebar */}
         {(view !== 'register' && view !== 'login' && view !== 'forgotPassword' && view !== 'resetPassword' && view !== 'upload' && view !== 'favorites') && (
@@ -249,7 +279,7 @@ function App() {
               onUsernameChange={auth.setUsername}
               onEmailChange={auth.setEmail}
               onPasswordChange={auth.setPassword}
-              onSubmit={handleRegister}
+              onSubmit={handleRegisterClick}
             />
           )}
 
