@@ -1056,6 +1056,234 @@ async def create_tos(content: str = Form(...), version: str = Form(...), user = 
     
     return {"id": tos_id, "version": version, "message": "Terms & Conditions created successfully"}
 
+# ============== ADMIN ENDPOINTS ==============
+
+@app.get("/api/admin/users")
+async def list_users(limit: int = 100, user = Depends(require_auth)):
+    """List all users (admin only)"""
+    if not user.get("is_admin"):
+        raise HTTPException(status_code=403, detail="Only admins can list users")
+    
+    conn = get_db()
+    cursor = conn.cursor()
+    
+    cursor.execute("""
+        SELECT id, username, email, is_admin, created_at FROM users
+        ORDER BY created_at DESC
+        LIMIT ?
+    """, (limit,))
+    
+    users = [dict(row) for row in cursor.fetchall()]
+    conn.close()
+    
+    return {"users": users}
+
+@app.get("/api/admin/users/{user_id}")
+async def get_user_details(user_id: int, admin_user = Depends(require_auth)):
+    """Get user details (admin only)"""
+    if not admin_user.get("is_admin"):
+        raise HTTPException(status_code=403, detail="Only admins can view user details")
+    
+    conn = get_db()
+    cursor = conn.cursor()
+    
+    cursor.execute("""
+        SELECT id, username, email, is_admin, created_at FROM users WHERE id = ?
+    """, (user_id,))
+    
+    user = cursor.fetchone()
+    conn.close()
+    
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+    
+    return dict(user)
+
+@app.put("/api/admin/users/{user_id}/role")
+async def update_user_role(user_id: int, is_admin: bool, admin_user = Depends(require_auth)):
+    """Update user admin role (admin only)"""
+    if not admin_user.get("is_admin"):
+        raise HTTPException(status_code=403, detail="Only admins can change user roles")
+    
+    if user_id == admin_user.get("id") and not is_admin:
+        raise HTTPException(status_code=400, detail="Cannot remove your own admin status")
+    
+    conn = get_db()
+    cursor = conn.cursor()
+    
+    cursor.execute("UPDATE users SET is_admin = ? WHERE id = ?", (is_admin, user_id))
+    conn.commit()
+    conn.close()
+    
+    log_activity(admin_user.get("id"), f"user_role_change_to_{is_admin}", None, None)
+    
+    return {"message": f"User role updated to {'admin' if is_admin else 'regular'}"}
+
+@app.delete("/api/admin/posts/{post_id}")
+async def delete_post_admin(post_id: int, user = Depends(require_auth)):
+    """Delete any post (admin only)"""
+    if not user.get("is_admin"):
+        raise HTTPException(status_code=403, detail="Only admins can delete posts")
+    
+    conn = get_db()
+    cursor = conn.cursor()
+    
+    # Get post details before deletion
+    cursor.execute("SELECT user_id, image_path FROM posts WHERE id = ?", (post_id,))
+    post = cursor.fetchone()
+    
+    if not post:
+        conn.close()
+        raise HTTPException(status_code=404, detail="Post not found")
+    
+    # Delete related favorites
+    cursor.execute("DELETE FROM favorites WHERE post_id = ?", (post_id,))
+    
+    # Delete post_tags
+    cursor.execute("DELETE FROM post_tags WHERE post_id = ?", (post_id,))
+    
+    # Delete pool_posts
+    cursor.execute("DELETE FROM pool_posts WHERE post_id = ?", (post_id,))
+    
+    # Delete post
+    cursor.execute("DELETE FROM posts WHERE id = ?", (post_id,))
+    
+    conn.commit()
+    conn.close()
+    
+    # Log activity
+    log_activity(user.get("id"), "post_moderation_delete", post_id, None)
+    
+    # Clean up image file
+    try:
+        if post[1] and os.path.exists(post[1]):
+            os.remove(post[1])
+    except Exception as e:
+        print(f"Error deleting image file: {e}")
+    
+    return {"message": "Post deleted by admin"}
+
+@app.delete("/api/admin/posts/{post_id}/user/{original_user_id}")
+async def delete_post_user_posts(post_id: int, original_user_id: int, user = Depends(require_auth)):
+    """Delete specific user's post (admin only)"""
+    if not user.get("is_admin"):
+        raise HTTPException(status_code=403, detail="Only admins can delete posts")
+    
+    conn = get_db()
+    cursor = conn.cursor()
+    
+    cursor.execute("SELECT user_id, image_path FROM posts WHERE id = ? AND user_id = ?", (post_id, original_user_id))
+    post = cursor.fetchone()
+    
+    if not post:
+        conn.close()
+        raise HTTPException(status_code=404, detail="Post not found")
+    
+    # Delete related entries
+    cursor.execute("DELETE FROM favorites WHERE post_id = ?", (post_id,))
+    cursor.execute("DELETE FROM post_tags WHERE post_id = ?", (post_id,))
+    cursor.execute("DELETE FROM pool_posts WHERE post_id = ?", (post_id,))
+    cursor.execute("DELETE FROM posts WHERE id = ?", (post_id,))
+    
+    conn.commit()
+    conn.close()
+    
+    log_activity(user.get("id"), "post_moderation_delete", post_id, None)
+    
+    try:
+        if post[1] and os.path.exists(post[1]):
+            os.remove(post[1])
+    except Exception as e:
+        print(f"Error deleting image file: {e}")
+    
+    return {"message": "Post deleted by admin"}
+
+@app.delete("/api/admin/pools/{pool_id}")
+async def delete_pool_admin(pool_id: int, user = Depends(require_auth)):
+    """Delete any pool (admin only)"""
+    if not user.get("is_admin"):
+        raise HTTPException(status_code=403, detail="Only admins can delete pools")
+    
+    conn = get_db()
+    cursor = conn.cursor()
+    
+    # Delete pool_posts
+    cursor.execute("DELETE FROM pool_posts WHERE pool_id = ?", (pool_id,))
+    
+    # Delete pool
+    cursor.execute("DELETE FROM pools WHERE id = ?", (pool_id,))
+    
+    conn.commit()
+    conn.close()
+    
+    log_activity(user.get("id"), "pool_moderation_delete", None, pool_id)
+    
+    return {"message": "Pool deleted by admin"}
+
+@app.delete("/api/admin/users/{user_id}")
+async def delete_user_admin(user_id: int, admin_user = Depends(require_auth)):
+    """Delete user account (admin only)"""
+    if not admin_user.get("is_admin"):
+        raise HTTPException(status_code=403, detail="Only admins can delete users")
+    
+    if user_id == admin_user.get("id"):
+        raise HTTPException(status_code=400, detail="Cannot delete your own account")
+    
+    conn = get_db()
+    cursor = conn.cursor()
+    
+    # Get all posts by this user
+    cursor.execute("SELECT id, image_path FROM posts WHERE user_id = ?", (user_id,))
+    posts = cursor.fetchall()
+    
+    # Delete all user's posts
+    for post_id, image_path in posts:
+        cursor.execute("DELETE FROM favorites WHERE post_id = ?", (post_id,))
+        cursor.execute("DELETE FROM post_tags WHERE post_id = ?", (post_id,))
+        cursor.execute("DELETE FROM pool_posts WHERE post_id = ?", (post_id,))
+        try:
+            if image_path and os.path.exists(image_path):
+                os.remove(image_path)
+        except Exception as e:
+            print(f"Error deleting image: {e}")
+    
+    cursor.execute("DELETE FROM posts WHERE user_id = ?", (user_id,))
+    cursor.execute("DELETE FROM pools WHERE user_id = ?", (user_id,))
+    cursor.execute("DELETE FROM favorites WHERE user_id = ?", (user_id,))
+    cursor.execute("DELETE FROM user_tos_acceptance WHERE user_id = ?", (user_id,))
+    cursor.execute("DELETE FROM password_reset_tokens WHERE user_id = ?", (user_id,))
+    cursor.execute("DELETE FROM activity_log WHERE user_id = ? OR action_detail LIKE ?", (user_id, f"%{user_id}%"))
+    cursor.execute("DELETE FROM users WHERE id = ?", (user_id,))
+    
+    conn.commit()
+    conn.close()
+    
+    log_activity(admin_user.get("id"), "user_deletion", None, None)
+    
+    return {"message": "User and all related data deleted"}
+
+@app.get("/api/admin/activity-log")
+async def get_admin_activity_log(limit: int = 100, user = Depends(require_auth)):
+    """Get admin activity log (admin only)"""
+    if not user.get("is_admin"):
+        raise HTTPException(status_code=403, detail="Only admins can view activity log")
+    
+    conn = get_db()
+    cursor = conn.cursor()
+    
+    cursor.execute("""
+        SELECT id, user_id, action_type, post_id, pool_id, timestamp
+        FROM activity_log
+        WHERE action_type LIKE '%moderation%' OR action_type LIKE '%user_role%' OR action_type = 'user_deletion'
+        ORDER BY timestamp DESC
+        LIMIT ?
+    """, (limit,))
+    
+    logs = [dict(row) for row in cursor.fetchall()]
+    conn.close()
+    
+    return {"logs": logs}
+
 # ============== ROOT ==============
 
 @app.get("/")

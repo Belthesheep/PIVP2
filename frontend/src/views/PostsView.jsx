@@ -9,6 +9,8 @@ export function PostsView({
   onPostClick,
   onDelete,
   onPageChange,
+  isAdmin,
+  onAdminDelete,
 }) {
   const paginatedPosts = posts.slice(currentPage * postsPerPage, (currentPage + 1) * postsPerPage);
   const totalPages = Math.ceil(posts.length / postsPerPage);
@@ -18,8 +20,10 @@ export function PostsView({
       <PostGrid
         posts={paginatedPosts}
         currentUserId={currentUserId}
+        isAdmin={isAdmin}
         onCardClick={onPostClick}
         onDelete={onDelete}
+        onAdminDelete={onAdminDelete}
       />
       <Pagination
         currentPage={currentPage}

@@ -9,6 +9,8 @@ export function FavoritesView({
   onPostClick,
   onDelete,
   onPageChange,
+  isAdmin,
+  onAdminDelete,
 }) {
   const paginatedFavorites = favorites.slice(currentPage * postsPerPage, (currentPage + 1) * postsPerPage);
   const totalPages = Math.ceil(favorites.length / postsPerPage);
@@ -27,8 +29,10 @@ export function FavoritesView({
       <PostGrid
         posts={paginatedFavorites}
         currentUserId={currentUser.id}
+        isAdmin={isAdmin}
         onCardClick={onPostClick}
         onDelete={onDelete}
+        onAdminDelete={onAdminDelete}
       />
       <Pagination
         currentPage={currentPage}

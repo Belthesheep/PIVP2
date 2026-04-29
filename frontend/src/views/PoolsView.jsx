@@ -10,6 +10,10 @@ export function PoolsView({
   onCardClick,
   onPageChange,
   poolPostCount,
+  currentUserId,
+  isAdmin,
+  onDelete,
+  onAdminDelete,
 }) {
   const paginatedPools = pools.slice(currentPage * poolsPerPage, (currentPage + 1) * poolsPerPage);
   const totalPages = Math.ceil(pools.length / poolsPerPage);
@@ -24,7 +28,11 @@ export function PoolsView({
       <PoolGrid
         pools={paginatedPools}
         poolPostCount={poolPostCount}
+        currentUserId={currentUserId}
+        isAdmin={isAdmin}
         onCardClick={onCardClick}
+        onDelete={onDelete}
+        onAdminDelete={onAdminDelete}
       />
 
       <Pagination

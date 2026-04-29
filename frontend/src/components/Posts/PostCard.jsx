@@ -1,10 +1,17 @@
 import { useCallback } from 'react';
 
-export function PostCard({ post, currentUserId, onCardClick, onDelete }) {
+export function PostCard({ post, currentUserId, isAdmin, onCardClick, onDelete, onAdminDelete }) {
   const handleDelete = useCallback((e) => {
     e.stopPropagation();
     onDelete(post.id);
   }, [post.id, onDelete]);
+
+  const handleAdminDelete = useCallback((e) => {
+    e.stopPropagation();
+    if (onAdminDelete) {
+      onAdminDelete(post.id);
+    }
+  }, [post.id, onAdminDelete]);
 
   return (
     <div className="post-card" onClick={() => onCardClick(post.id)}>
@@ -29,6 +36,15 @@ export function PostCard({ post, currentUserId, onCardClick, onDelete }) {
                 onClick={handleDelete}
               >
                 Delete
+              </button>
+            )}
+            {isAdmin && currentUserId !== post.uploader_id && (
+              <button
+                className="delete-btn-admin"
+                onClick={handleAdminDelete}
+                title="Delete as admin"
+              >
+                Delete (Admin)
               </button>
             )}
           </div>

@@ -27,6 +27,7 @@ import { PoolDetail } from './components/Pools/PoolDetail';
 import { PostsView } from './views/PostsView';
 import { FavoritesView } from './views/FavoritesView';
 import { PoolsView } from './views/PoolsView';
+import { AdminPanel } from './views/AdminPanel';
 
 function App() {
   // Use custom hooks
@@ -154,6 +155,19 @@ function App() {
     }
   };
 
+  const handleAdminDeletePost = async (postId) => {
+    try {
+      await api.deletePostAdmin(postId);
+      if (selectedPost?.id === postId) {
+        setSelectedPost(null);
+        setView('posts');
+      }
+      await loadAllData();
+    } catch (error) {
+      alert(error.response?.data?.detail || 'Failed to delete post');
+    }
+  };
+
   const openPost = async (postId) => {
     try {
       const res = await api.getPost(postId);
@@ -214,6 +228,26 @@ function App() {
     await pools.addPostToPool(poolId, postId);
   };
 
+  const handleDeletePool = async (poolId) => {
+    const success = await pools.handleDeletePool(poolId);
+    if (success) {
+      setView('pools');
+      setPoolsPage(0);
+      await loadAllData();
+    }
+  };
+
+  const handleAdminDeletePool = async (poolId) => {
+    try {
+      await api.deletePoolAdmin(poolId);
+      setView('pools');
+      setPoolsPage(0);
+      await loadAllData();
+    } catch (error) {
+      alert(error.response?.data?.detail || 'Failed to delete pool');
+    }
+  };
+
   // Filter posts based on tag search
   const filteredPosts = posts.posts.filter(post => {
     const postTags = (post.tags || []).map(t => String(t).toLowerCase());
@@ -234,6 +268,7 @@ function App() {
         showFavorites={true}
         onFavorites={() => { setView('favorites'); setPostsPage(0); }}
         onLogout={handleLogout}
+        onAdminPanel={() => { setView('admin'); }}
       />
 
       <TermsModal 
@@ -244,7 +279,7 @@ function App() {
 
       <div className="app-content">
         {/* Sidebar */}
-        {(view !== 'register' && view !== 'login' && view !== 'forgotPassword' && view !== 'resetPassword' && view !== 'upload' && view !== 'favorites') && (
+        {(view !== 'register' && view !== 'login' && view !== 'forgotPassword' && view !== 'resetPassword' && view !== 'upload' && view !== 'favorites' && view !== 'admin') && (
           <Sidebar
             tags={tags.tags}
             selectedTag={tags.selectedTag}
@@ -339,6 +374,8 @@ function App() {
                 onPostClick={openPost}
                 onDelete={handleDeletePost}
                 onPageChange={setPostsPage}
+                isAdmin={auth.currentUser?.is_admin}
+                onAdminDelete={handleAdminDeletePost}
               />
             )}
 
@@ -368,6 +405,10 @@ function App() {
                 onCardClick={openPoolDetail}
                 onPageChange={setPoolsPage}
                 poolPostCount={pools.poolPostCount}
+                currentUserId={auth.currentUser?.id}
+                isAdmin={auth.currentUser?.is_admin}
+                onDelete={handleDeletePool}
+                onAdminDelete={handleAdminDeletePool}
               />
             )}
 
@@ -393,7 +434,14 @@ function App() {
                 onPostClick={openPost}
                 onDelete={handleDeletePost}
                 onPageChange={setPostsPage}
+                isAdmin={auth.currentUser?.is_admin}
+                onAdminDelete={handleAdminDeletePost}
               />
+            )}
+
+            {/* ADMIN PANEL VIEW */}
+            {view === 'admin' && auth.currentUser?.is_admin && (
+              <AdminPanel currentUser={auth.currentUser} />
             )}
           </main>
         </div>

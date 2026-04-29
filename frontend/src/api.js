@@ -124,4 +124,26 @@ export const api = {
     axios.post(`${API_BASE}/tos`, { content, version }, {
       headers: { 'Content-Type': 'multipart/form-data' }
     }),
+
+  // Admin functions
+  listUsers: (limit = 100) =>
+    axios.get(`${API_BASE}/admin/users`, { params: { limit } }),
+  
+  getUserDetails: (userId) =>
+    axios.get(`${API_BASE}/admin/users/${userId}`),
+  
+  updateUserRole: (userId, isAdmin) =>
+    axios.put(`${API_BASE}/admin/users/${userId}/role`, { is_admin: isAdmin }),
+  
+  deletePostAdmin: (postId) =>
+    axios.delete(`${API_BASE}/admin/posts/${postId}`),
+  
+  deletePoolAdmin: (poolId) =>
+    axios.delete(`${API_BASE}/admin/pools/${poolId}`),
+  
+  deleteUserAdmin: (userId) =>
+    axios.delete(`${API_BASE}/admin/users/${userId}`),
+  
+  getAdminActivityLog: (limit = 100) =>
+    axios.get(`${API_BASE}/admin/activity-log`, { params: { limit } }),
 };
