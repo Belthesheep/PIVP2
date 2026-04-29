@@ -1,12 +1,8 @@
 import { useState, useEffect } from 'react';
-import { useSearchParams, useNavigate } from 'react-router-dom';
 import { api } from '../../api';
 
 export function ResetPasswordForm({ onBack }) {
-  const [searchParams] = useSearchParams();
-  const navigate = useNavigate();
-  const token = searchParams.get('token');
-  
+  const [token, setToken] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [validating, setValidating] = useState(true);
@@ -16,16 +12,22 @@ export function ResetPasswordForm({ onBack }) {
   const [success, setSuccess] = useState(false);
 
   useEffect(() => {
-    if (!token) {
+    // Get token from URL query params
+    const params = new URLSearchParams(window.location.search);
+    const resetToken = params.get('token');
+    
+    if (!resetToken) {
       setError('No reset token provided');
       setValidating(false);
       return;
     }
 
+    setToken(resetToken);
+
     // Validate token
     const validateToken = async () => {
       try {
-        await api.validateResetToken(token);
+        await api.validateResetToken(resetToken);
         setValid(true);
       } catch (err) {
         setError(err.response?.data?.detail || 'Invalid or expired reset token');
@@ -35,7 +37,7 @@ export function ResetPasswordForm({ onBack }) {
     };
 
     validateToken();
-  }, [token]);
+  }, []);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -61,7 +63,9 @@ export function ResetPasswordForm({ onBack }) {
       
       // Redirect to login after 3 seconds
       setTimeout(() => {
-        navigate('/');
+        if (onBack) {
+          onBack();
+        }
       }, 3000);
     } catch (err) {
       setError(err.response?.data?.detail || 'Failed to reset password');

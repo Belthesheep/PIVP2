@@ -36,7 +36,7 @@ export function Sidebar({
 
   return (
     <aside className="sidebar">
-      <h3>Tags</h3>
+      <h3>Search</h3>
       <div style={{ marginBottom: 8, position: 'relative' }}>
         <input
           placeholder="Search tags (comma-separated)"
