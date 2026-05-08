@@ -1235,42 +1235,45 @@ async def delete_user_admin(user_id: int, admin_user = Depends(require_auth)):
     if user_id == admin_user.get("id"):
         raise HTTPException(status_code=400, detail="Cannot delete your own account")
     
-    conn = get_db()
-    cursor = conn.cursor()
-    
-    # Get all posts by this user
-    cursor.execute("SELECT id, image_filename FROM posts WHERE uploader_id = ?", (user_id,))
-    posts = cursor.fetchall()
-    
-    # Delete all user's posts
-    for post_id, image_filename in posts:
-        cursor.execute("DELETE FROM favorites WHERE post_id = ?", (post_id,))
-        cursor.execute("DELETE FROM post_tags WHERE post_id = ?", (post_id,))
-        cursor.execute("DELETE FROM pool_posts WHERE post_id = ?", (post_id,))
-        try:
-            if image_filename:
-                image_path = os.path.join("uploads", image_filename)
-                if os.path.exists(image_path):
-                    os.remove(image_path)
-        except Exception as e:
-            print(f"Error deleting image file for post {post_id}: {e}")
-    
-    cursor.execute("DELETE FROM posts WHERE uploader_id = ?",(user_id,))
-    cursor.execute("DELETE FROM pools WHERE creator_id = ?", (user_id,))
-    cursor.execute("DELETE FROM favorites WHERE user_id = ?", (user_id,))
-    cursor.execute("DELETE FROM user_tos_acceptance WHERE user_id = ?", (user_id,))
-    cursor.execute("DELETE FROM password_reset_tokens WHERE user_id = ?", (user_id,))
-    cursor.execute("DELETE FROM activity_log WHERE user_id = ? OR action_detail LIKE ?", (user_id, f"%{user_id}%"))
-    
-    cursor.execute("DELETE FROM users WHERE id = ?", (user_id,))
-    
-    conn.commit()
-    conn.close()
-    
-    # Log activity AFTER deletion (to user database connection outside of deleted tables)
-    log_activity(admin_user.get("id"), "user_deletion", None, None)
-    
-    return {"message": "User and all related data deleted"}
+    try:
+        conn = get_db()
+        cursor = conn.cursor()
+        
+        # Get all posts by this user
+        cursor.execute("SELECT id, image_filename FROM posts WHERE uploader_id = ?", (user_id,))
+        posts = cursor.fetchall()
+        
+        # Delete all user's posts
+        for post_id, image_filename in posts:
+            cursor.execute("DELETE FROM favorites WHERE post_id = ?", (post_id,))
+            cursor.execute("DELETE FROM post_tags WHERE post_id = ?", (post_id,))
+            cursor.execute("DELETE FROM pool_posts WHERE post_id = ?", (post_id,))
+            try:
+                if image_filename:
+                    image_path = os.path.join("uploads", image_filename)
+                    if os.path.exists(image_path):
+                        os.remove(image_path)
+            except Exception as e:
+                print(f"Error deleting image file for post {post_id}: {e}")
+        
+        cursor.execute("DELETE FROM posts WHERE uploader_id = ?", (user_id,))
+        cursor.execute("DELETE FROM pools WHERE creator_id = ?", (user_id,))
+        cursor.execute("DELETE FROM favorites WHERE user_id = ?", (user_id,))
+        cursor.execute("DELETE FROM user_tos_acceptance WHERE user_id = ?", (user_id,))
+        cursor.execute("DELETE FROM password_reset_tokens WHERE user_id = ?", (user_id,))
+        cursor.execute("DELETE FROM activity_log WHERE user_id = ?", (user_id,))
+        cursor.execute("DELETE FROM users WHERE id = ?", (user_id,))
+        
+        conn.commit()
+        conn.close()
+        
+        # Log activity AFTER deletion
+        log_activity(admin_user.get("id"), "user_deletion", None, None)
+        
+        return {"message": "User and all related data deleted"}
+    except Exception as e:
+        print(f"Error deleting user {user_id}: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Error deleting user: {str(e)}")
 
 @app.get("/api/admin/activity-log")
 async def get_admin_activity_log(limit: int = 100, user = Depends(require_auth)):
