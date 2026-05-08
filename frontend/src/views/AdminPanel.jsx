@@ -95,15 +95,15 @@ export function AdminPanel({ currentUser }) {
       
       if (format === 'csv') {
         const res = await api.exportReportCSV(reportType);
-        blob = res;
+        blob = res.data;
         filename = `report_${reportType}_${new Date().toISOString().slice(0, 10)}.csv`;
       } else if (format === 'json') {
         const res = await api.exportReportJSON(reportType);
-        blob = res;
+        blob = res.data;
         filename = `report_${reportType}_${new Date().toISOString().slice(0, 10)}.json`;
       } else if (format === 'pdf') {
         const res = await api.exportReportPDF(reportType);
-        blob = res;
+        blob = res.data;
         filename = `report_${reportType}_${new Date().toISOString().slice(0, 10)}.pdf`;
       }
       
