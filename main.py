@@ -919,7 +919,7 @@ async def export_report_csv(report_type: str = "summary", user = Depends(require
     if not user.get("is_admin"):
         raise HTTPException(status_code=403, detail="Only admins can export reports")
     
-    if report_type not in ["summary", "posts", "pools", "tags"]:
+    if report_type not in ["summary", "posts", "pools", "tags", "uploaders"]:
         raise HTTPException(status_code=400, detail="Invalid report type")
     
     try:
@@ -961,8 +961,8 @@ async def export_report_pdf(report_type: str = "summary", user = Depends(require
     if not user.get("is_admin"):
         raise HTTPException(status_code=403, detail="Only admins can export reports")
     
-    if report_type not in ["summary", "posts", "pools"]:
-        raise HTTPException(status_code=400, detail="Invalid report type. PDF supports: summary, posts, pools")
+    if report_type not in ["summary", "posts", "pools", "tags"]:
+        raise HTTPException(status_code=400, detail="Invalid report type. PDF supports: summary, posts, pools, tags")
     
     try:
         pdf_content = generate_pdf_report(report_type)

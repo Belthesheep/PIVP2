@@ -114,6 +114,18 @@ def generate_csv_report(report_type: str = "summary") -> str:
         for tag in report["most_used_tags"]:
             writer.writerow([tag["tag_name"], tag["post_count"]])
     
+    elif report_type == "uploaders":
+        report = {"top_uploaders": get_top_uploaders()}
+        
+        writer.writerow(["SheepBooru Top Uploaders"])
+        writer.writerow([f"Generated: {datetime.datetime.now().isoformat()}"])
+        writer.writerow([])
+        
+        writer.writerow(["TOP UPLOADERS"])
+        writer.writerow(["Username", "Post Count"])
+        for uploader in report["top_uploaders"]:
+            writer.writerow([uploader["username"], uploader["post_count"]])
+    
     return output.getvalue()
 
 
@@ -257,6 +269,27 @@ def generate_pdf_report(report_type: str = "summary") -> bytes:
                 ('GRID', (0, 0), (-1, -1), 1, colors.black)
             ]))
             elements.append(posts_table)
+        
+        elif report_type == "tags":
+            report = get_tag_statistics(100)
+            
+            elements.append(Paragraph("Tag Statistics", heading_style))
+            tags_data = [["Tag Name", "Post Count"]]
+            for tag in report["most_used_tags"][:20]:  # Limit to top 20 for PDF
+                tags_data.append([tag["tag_name"], str(tag["post_count"])])
+            
+            tags_table = Table(tags_data, colWidths=[3*inch, 2*inch])
+            tags_table.setStyle(TableStyle([
+                ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#1e6ed8')),
+                ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
+                ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
+                ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+                ('FONTSIZE', (0, 0), (-1, 0), 12),
+                ('BOTTOMPADDING', (0, 0), (-1, 0), 12),
+                ('BACKGROUND', (0, 1), (-1, -1), colors.beige),
+                ('GRID', (0, 0), (-1, -1), 1, colors.black)
+            ]))
+            elements.append(tags_table)
         
         # Build PDF
         doc.build(elements)
