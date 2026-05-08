@@ -974,6 +974,7 @@ async def export_report_pdf(report_type: str = "summary", user = Depends(require
             headers={"Content-Disposition": f"attachment; filename={filename}"}
         )
     except Exception as e:
+        print(f"PDF export error: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Error generating PDF: {str(e)}")
 
 # ============== TERMS & CONDITIONS ENDPOINTS ==============

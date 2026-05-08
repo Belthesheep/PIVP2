@@ -159,104 +159,110 @@ def generate_pdf_report(report_type: str = "summary") -> bytes:
     if not REPORTLAB_AVAILABLE:
         raise RuntimeError("ReportLab not installed. Install with: pip install reportlab")
     
-    # Create PDF in memory
-    pdf_buffer = io.BytesIO()
-    doc = SimpleDocTemplate(pdf_buffer, pagesize=letter)
-    elements = []
-    
-    # Styles
-    styles = getSampleStyleSheet()
-    title_style = ParagraphStyle(
-        'CustomTitle',
-        parent=styles['Heading1'],
-        fontSize=24,
-        textColor=colors.HexColor('#1e6ed8'),
-        spaceAfter=30,
-        alignment=1  # Center
-    )
-    heading_style = ParagraphStyle(
-        'CustomHeading',
-        parent=styles['Heading2'],
-        fontSize=14,
-        textColor=colors.HexColor('#1e6ed8'),
-        spaceAfter=12,
-        spaceBefore=12,
-    )
-    
-    # Title
-    elements.append(Paragraph("SheepBooru Analytics Report", title_style))
-    elements.append(Paragraph(f"Generated: {datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')}", styles['Normal']))
-    elements.append(Spacer(1, 0.3 * inch))
-    
-    if report_type == "summary":
-        report = get_summary_report()
+    try:
+        # Create PDF in memory
+        pdf_buffer = io.BytesIO()
+        doc = SimpleDocTemplate(pdf_buffer, pagesize=letter)
+        elements = []
         
-        # Summary statistics
-        elements.append(Paragraph("Summary Statistics", heading_style))
-        summary_data = [
-            ["Metric", "Value"],
-            ["Total Posts", str(report["total_posts"])],
-            ["Total Users", str(report["total_users"])],
-            ["Storage Used (MB)", str(report["storage_used_mb"])],
-        ]
-        summary_table = Table(summary_data, colWidths=[3*inch, 2*inch])
-        summary_table.setStyle(TableStyle([
-            ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#1e6ed8')),
-            ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
-            ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
-            ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
-            ('FONTSIZE', (0, 0), (-1, 0), 12),
-            ('BOTTOMPADDING', (0, 0), (-1, 0), 12),
-            ('BACKGROUND', (0, 1), (-1, -1), colors.beige),
-            ('GRID', (0, 0), (-1, -1), 1, colors.black)
-        ]))
-        elements.append(summary_table)
-        elements.append(Spacer(1, 0.2 * inch))
+        # Styles
+        styles = getSampleStyleSheet()
+        title_style = ParagraphStyle(
+            'CustomTitle',
+            parent=styles['Heading1'],
+            fontSize=24,
+            textColor=colors.HexColor('#1e6ed8'),
+            spaceAfter=30,
+            alignment=1  # Center
+        )
+        heading_style = ParagraphStyle(
+            'CustomHeading',
+            parent=styles['Heading2'],
+            fontSize=14,
+            textColor=colors.HexColor('#1e6ed8'),
+            spaceAfter=12,
+            spaceBefore=12,
+        )
         
-        # Activity stats
-        elements.append(Paragraph("Activity - Today", heading_style))
-        activity_data = [
-            ["Action Type", "Count"],
-            ["Uploads", str(report["activity_today"]["upload_count"])],
-            ["Downloads", str(report["activity_today"]["download_count"])],
-            ["Deletes", str(report["activity_today"]["delete_count"])],
-        ]
-        activity_table = Table(activity_data, colWidths=[3*inch, 2*inch])
-        activity_table.setStyle(TableStyle([
-            ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#1e6ed8')),
-            ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
-            ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
-            ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
-            ('FONTSIZE', (0, 0), (-1, 0), 12),
-            ('BOTTOMPADDING', (0, 0), (-1, 0), 12),
-            ('BACKGROUND', (0, 1), (-1, -1), colors.beige),
-            ('GRID', (0, 0), (-1, -1), 1, colors.black)
-        ]))
-        elements.append(activity_table)
-    
-    elif report_type == "posts":
-        report = get_post_statistics()
+        # Title
+        elements.append(Paragraph("SheepBooru Analytics Report", title_style))
+        elements.append(Paragraph(f"Generated: {datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')}", styles['Normal']))
+        elements.append(Spacer(1, 0.3 * inch))
         
-        elements.append(Paragraph("Post Statistics", heading_style))
-        posts_data = [
-            ["Metric", "Value"],
-            ["Total Posts", str(report["total_posts"])],
-            ["Untagged Posts", str(report["untagged_posts"])],
-            ["Average Favorites", str(report["average_favorites"])],
-        ]
-        posts_table = Table(posts_data, colWidths=[3*inch, 2*inch])
-        posts_table.setStyle(TableStyle([
-            ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#1e6ed8')),
-            ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
-            ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
-            ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
-            ('FONTSIZE', (0, 0), (-1, 0), 12),
-            ('BOTTOMPADDING', (0, 0), (-1, 0), 12),
-            ('BACKGROUND', (0, 1), (-1, -1), colors.beige),
-            ('GRID', (0, 0), (-1, -1), 1, colors.black)
-        ]))
-        elements.append(posts_table)
-    
-    # Build PDF
-    doc.build(elements)
-    return pdf_buffer.getvalue()
+        if report_type == "summary":
+            report = get_summary_report()
+            
+            # Summary statistics
+            elements.append(Paragraph("Summary Statistics", heading_style))
+            summary_data = [
+                ["Metric", "Value"],
+                ["Total Posts", str(report["total_posts"])],
+                ["Total Users", str(report["total_users"])],
+                ["Storage Used (MB)", str(report["storage_used_mb"])],
+            ]
+            summary_table = Table(summary_data, colWidths=[3*inch, 2*inch])
+            summary_table.setStyle(TableStyle([
+                ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#1e6ed8')),
+                ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
+                ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
+                ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+                ('FONTSIZE', (0, 0), (-1, 0), 12),
+                ('BOTTOMPADDING', (0, 0), (-1, 0), 12),
+                ('BACKGROUND', (0, 1), (-1, -1), colors.beige),
+                ('GRID', (0, 0), (-1, -1), 1, colors.black)
+            ]))
+            elements.append(summary_table)
+            elements.append(Spacer(1, 0.2 * inch))
+            
+            # Activity stats
+            elements.append(Paragraph("Activity - Today", heading_style))
+            activity_data = [
+                ["Action Type", "Count"],
+                ["Uploads", str(report["activity_today"]["upload_count"])],
+                ["Downloads", str(report["activity_today"]["download_count"])],
+                ["Deletes", str(report["activity_today"]["delete_count"])],
+            ]
+            activity_table = Table(activity_data, colWidths=[3*inch, 2*inch])
+            activity_table.setStyle(TableStyle([
+                ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#1e6ed8')),
+                ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
+                ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
+                ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+                ('FONTSIZE', (0, 0), (-1, 0), 12),
+                ('BOTTOMPADDING', (0, 0), (-1, 0), 12),
+                ('BACKGROUND', (0, 1), (-1, -1), colors.beige),
+                ('GRID', (0, 0), (-1, -1), 1, colors.black)
+            ]))
+            elements.append(activity_table)
+        
+        elif report_type == "posts":
+            report = get_post_statistics()
+            
+            elements.append(Paragraph("Post Statistics", heading_style))
+            posts_data = [
+                ["Metric", "Value"],
+                ["Total Posts", str(report["total_posts"])],
+                ["Untagged Posts", str(report["untagged_posts"])],
+                ["Average Favorites", str(report["average_favorites"])],
+            ]
+            posts_table = Table(posts_data, colWidths=[3*inch, 2*inch])
+            posts_table.setStyle(TableStyle([
+                ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#1e6ed8')),
+                ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
+                ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
+                ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+                ('FONTSIZE', (0, 0), (-1, 0), 12),
+                ('BOTTOMPADDING', (0, 0), (-1, 0), 12),
+                ('BACKGROUND', (0, 1), (-1, -1), colors.beige),
+                ('GRID', (0, 0), (-1, -1), 1, colors.black)
+            ]))
+            elements.append(posts_table)
+        
+        # Build PDF
+        doc.build(elements)
+        return pdf_buffer.getvalue()
+    except Exception as e:
+        print(f"Error in generate_pdf_report({report_type}): {str(e)}")
+        import traceback
+        traceback.print_exc()
+        raise
