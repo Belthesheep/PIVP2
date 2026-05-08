@@ -1129,7 +1129,7 @@ async def delete_post_admin(post_id: int, user = Depends(require_auth)):
     cursor = conn.cursor()
     
     # Get post details before deletion
-    cursor.execute("SELECT user_id, image_filename FROM posts WHERE id = ?", (post_id,))
+    cursor.execute("SELECT uploader_id, image_filename FROM posts WHERE id = ?", (post_id,))
     post = cursor.fetchone()
     
     if not post:
@@ -1174,7 +1174,7 @@ async def delete_post_user_posts(post_id: int, original_user_id: int, user = Dep
     conn = get_db()
     cursor = conn.cursor()
     
-    cursor.execute("SELECT user_id, image_filename FROM posts WHERE id = ? AND user_id = ?", (post_id, original_user_id))
+    cursor.execute("SELECT uploader_id, image_filename FROM posts WHERE id = ? AND uploader_id = ?", (post_id, original_user_id))
     post = cursor.fetchone()
     
     if not post:
@@ -1237,7 +1237,7 @@ async def delete_user_admin(user_id: int, admin_user = Depends(require_auth)):
     cursor = conn.cursor()
     
     # Get all posts by this user
-    cursor.execute("SELECT id, image_filename FROM posts WHERE user_id = ?", (user_id,))
+    cursor.execute("SELECT id, image_filename FROM posts WHERE uploader_id = ?", (user_id,))
     posts = cursor.fetchall()
     
     # Delete all user's posts
