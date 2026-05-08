@@ -1136,6 +1136,9 @@ async def delete_post_admin(post_id: int, user = Depends(require_auth)):
         conn.close()
         raise HTTPException(status_code=404, detail="Post not found")
     
+    # Log activity BEFORE deletion (to avoid foreign key constraint)
+    log_activity(user.get("id"), "post_moderation_delete", post_id, None)
+    
     # Delete related favorites
     cursor.execute("DELETE FROM favorites WHERE post_id = ?", (post_id,))
     
@@ -1150,9 +1153,6 @@ async def delete_post_admin(post_id: int, user = Depends(require_auth)):
     
     conn.commit()
     conn.close()
-    
-    # Log activity
-    log_activity(user.get("id"), "post_moderation_delete", post_id, None)
     
     # Clean up image file
     try:
@@ -1181,6 +1181,9 @@ async def delete_post_user_posts(post_id: int, original_user_id: int, user = Dep
         conn.close()
         raise HTTPException(status_code=404, detail="Post not found")
     
+    # Log activity BEFORE deletion (to avoid foreign key constraint)
+    log_activity(user.get("id"), "post_moderation_delete", post_id, None)
+    
     # Delete related entries
     cursor.execute("DELETE FROM favorites WHERE post_id = ?", (post_id,))
     cursor.execute("DELETE FROM post_tags WHERE post_id = ?", (post_id,))
@@ -1189,8 +1192,6 @@ async def delete_post_user_posts(post_id: int, original_user_id: int, user = Dep
     
     conn.commit()
     conn.close()
-    
-    log_activity(user.get("id"), "post_moderation_delete", post_id, None)
     
     try:
         if post[1]:
@@ -1211,6 +1212,9 @@ async def delete_pool_admin(pool_id: int, user = Depends(require_auth)):
     conn = get_db()
     cursor = conn.cursor()
     
+    # Log activity BEFORE deletion (to avoid foreign key constraint)
+    log_activity(user.get("id"), "pool_moderation_delete", None, pool_id)
+    
     # Delete pool_posts
     cursor.execute("DELETE FROM pool_posts WHERE pool_id = ?", (pool_id,))
     
@@ -1219,8 +1223,6 @@ async def delete_pool_admin(pool_id: int, user = Depends(require_auth)):
     
     conn.commit()
     conn.close()
-    
-    log_activity(user.get("id"), "pool_moderation_delete", None, pool_id)
     
     return {"message": "Pool deleted by admin"}
 
@@ -1253,17 +1255,19 @@ async def delete_user_admin(user_id: int, admin_user = Depends(require_auth)):
         except Exception as e:
             print(f"Error deleting image file for post {post_id}: {e}")
     
-    cursor.execute("DELETE FROM posts WHERE user_id = ?", (user_id,))
-    cursor.execute("DELETE FROM pools WHERE user_id = ?", (user_id,))
+    cursor.execute("DELETE FROM posts WHERE uploader_id = ?",(user_id,))
+    cursor.execute("DELETE FROM pools WHERE creator_id = ?", (user_id,))
     cursor.execute("DELETE FROM favorites WHERE user_id = ?", (user_id,))
     cursor.execute("DELETE FROM user_tos_acceptance WHERE user_id = ?", (user_id,))
     cursor.execute("DELETE FROM password_reset_tokens WHERE user_id = ?", (user_id,))
     cursor.execute("DELETE FROM activity_log WHERE user_id = ? OR action_detail LIKE ?", (user_id, f"%{user_id}%"))
+    
     cursor.execute("DELETE FROM users WHERE id = ?", (user_id,))
     
     conn.commit()
     conn.close()
     
+    # Log activity AFTER deletion (to user database connection outside of deleted tables)
     log_activity(admin_user.get("id"), "user_deletion", None, None)
     
     return {"message": "User and all related data deleted"}
