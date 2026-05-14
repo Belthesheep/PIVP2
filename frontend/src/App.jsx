@@ -387,6 +387,7 @@ function App() {
                 pools={pools.pools}
                 onToggleFavorite={toggleFavorite}
                 onDelete={handleDeletePost}
+                onAdminDelete={handleAdminDeletePost}
                 onOpenPool={openPoolDetail}
                 onAddToPool={handleAddToPool}
                 onPoolSearchChange={pools.setPoolSearch}

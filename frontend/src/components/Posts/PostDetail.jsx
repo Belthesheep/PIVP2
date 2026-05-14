@@ -6,6 +6,7 @@ export function PostDetail({
   pools,
   onToggleFavorite,
   onDelete,
+  onAdminDelete,
   onOpenPool,
   onAddToPool,
   onPoolSearchChange,
@@ -19,6 +20,12 @@ export function PostDetail({
   const handleDelete = useCallback(() => {
     onDelete(post.id);
   }, [post.id, onDelete]);
+
+  const handleAdminDelete = useCallback(() => {
+    if (onAdminDelete) {
+      onAdminDelete(post.id);
+    }
+  }, [post.id, onAdminDelete]);
 
   const handleAddToPool = useCallback((poolId) => {
     onAddToPool(poolId, post.id);
@@ -114,6 +121,15 @@ export function PostDetail({
                 style={{ marginLeft: 8 }}
               >
                 Delete
+              </button>
+            )}
+            {currentUser?.is_admin && currentUser?.id !== post.uploader_id && (
+              <button
+                className="delete-btn"
+                onClick={handleAdminDelete}
+                style={{ marginLeft: 8 }}
+              >
+                Delete (Admin)
               </button>
             )}
           </div>
