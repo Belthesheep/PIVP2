@@ -402,6 +402,7 @@ main {
 
 .detail-footer {
   border-top: 1px solid #eee;
+  padding-top: 1rem;
 }
 
 .detail-section h3 {
@@ -469,7 +470,6 @@ main {
   border-radius: 8px;
   cursor: pointer;
   font-size: 0.9rem;
-  margin-left: 0.5rem;
 }
 
 .delete-btn-admin:hover {

@@ -112,26 +112,30 @@ export function PostDetail({
 
           {/* Uploader */}
           <div className="detail-section detail-footer">
-            <h3>Uploader</h3>
-            <small>{post.uploader_username}</small>
-            {currentUser?.id === post.uploader_id && (
-              <button
-                className="delete-btn"
-                onClick={handleDelete}
-                style={{ marginLeft: 8 }}
-              >
-                Delete
-              </button>
-            )}
-            {currentUser?.is_admin && currentUser?.id !== post.uploader_id && (
-              <button
-                className="delete-btn-admin"
-                onClick={handleAdminDelete}
-                style={{ marginLeft: 8 }}
-              >
-                Delete (Admin)
-              </button>
-            )}
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <div>
+                <h3>Uploader</h3>
+                <small>{post.uploader_username}</small>
+              </div>
+              <div style={{ display: 'flex', gap: 8 }}>
+                {currentUser?.id === post.uploader_id && (
+                  <button
+                    className="delete-btn"
+                    onClick={handleDelete}
+                  >
+                    Delete
+                  </button>
+                )}
+                {currentUser?.is_admin && currentUser?.id !== post.uploader_id && (
+                  <button
+                    className="delete-btn-admin"
+                    onClick={handleAdminDelete}
+                  >
+                    Delete (Admin)
+                  </button>
+                )}
+              </div>
+            </div>
           </div>
         </div>
       </div>
