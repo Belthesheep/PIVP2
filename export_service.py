@@ -103,7 +103,7 @@ def generate_csv_report(report_type: str = "summary") -> str:
             writer.writerow([creator["username"], creator["pool_count"]])
     
     elif report_type == "tags":
-        report = get_tag_statistics(100)
+        report = get_tag_statistics(20)
         
         writer.writerow(["SheepBooru Tag Statistics"])
         writer.writerow([f"Generated: {datetime.datetime.now().isoformat()}"])
@@ -271,11 +271,11 @@ def generate_pdf_report(report_type: str = "summary") -> bytes:
             elements.append(posts_table)
         
         elif report_type == "tags":
-            report = get_tag_statistics(100)
+            report = get_tag_statistics(20)
             
             elements.append(Paragraph("Tag Statistics", heading_style))
             tags_data = [["Tag Name", "Post Count"]]
-            for tag in report["most_used_tags"][:20]:  # Limit to top 20 for PDF
+            for tag in report["most_used_tags"]:
                 tags_data.append([tag["tag_name"], str(tag["post_count"])])
             
             tags_table = Table(tags_data, colWidths=[3*inch, 2*inch])
