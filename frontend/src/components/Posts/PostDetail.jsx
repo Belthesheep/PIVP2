@@ -125,7 +125,7 @@ export function PostDetail({
             )}
             {currentUser?.is_admin && currentUser?.id !== post.uploader_id && (
               <button
-                className="delete-btn"
+                className="delete-btn-admin"
                 onClick={handleAdminDelete}
                 style={{ marginLeft: 8 }}
               >
