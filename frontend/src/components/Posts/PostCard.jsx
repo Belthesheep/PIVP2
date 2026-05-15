@@ -1,4 +1,5 @@
 import { useCallback } from 'react';
+import { isVideo, getMediaUrl } from '../../utils/mediaUtils';
 
 export function PostCard({ post, currentUserId, isAdmin, onCardClick, onDelete, onAdminDelete }) {
   const handleDelete = useCallback((e) => {
@@ -13,12 +14,42 @@ export function PostCard({ post, currentUserId, isAdmin, onCardClick, onDelete, 
     }
   }, [post.id, onAdminDelete]);
 
+  const mediaIsVideo = isVideo(post.image_filename);
+  const mediaUrl = getMediaUrl(post.image_filename);
+
   return (
     <div className="post-card" onClick={() => onCardClick(post.id)}>
-      <img
-        src={`http://localhost:8000/uploads/${post.image_filename}`}
-        alt={post.description || 'Post'}
-      />
+      {mediaIsVideo ? (
+        <div style={{ position: 'relative', width: '100%', paddingBottom: '100%' }}>
+          <video
+            src={mediaUrl}
+            style={{
+              position: 'absolute',
+              top: 0,
+              left: 0,
+              width: '100%',
+              height: '100%',
+              objectFit: 'cover',
+              borderRadius: '8px 8px 0 0'
+            }}
+          />
+          <div style={{
+            position: 'absolute',
+            top: '50%',
+            left: '50%',
+            transform: 'translate(-50%, -50%)',
+            fontSize: '2rem',
+            opacity: 0.7
+          }}>
+            🎬
+          </div>
+        </div>
+      ) : (
+        <img
+          src={mediaUrl}
+          alt={post.description || 'Post'}
+        />
+      )}
       <div className="post-info">
         <p className="post-desc">{post.description || 'No description'}</p>
         <div className="post-tags">

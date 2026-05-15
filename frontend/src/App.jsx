@@ -28,6 +28,7 @@ import { PostsView } from './views/PostsView';
 import { FavoritesView } from './views/FavoritesView';
 import { PoolsView } from './views/PoolsView';
 import { AdminPanel } from './views/AdminPanel';
+import { TagsBrowseView } from './views/TagsBrowseView';
 
 function App() {
   // Use custom hooks
@@ -264,6 +265,7 @@ function App() {
         onRegister={() => { setView('register'); }}
         onLogin={() => { setView('login'); }}
         onPools={() => { setView('pools'); setPoolsPage(0); }}
+        onTags={() => { setView('tags'); }}
         currentUser={auth.currentUser}
         showFavorites={true}
         onFavorites={() => { setView('favorites'); setPostsPage(0); }}
@@ -279,7 +281,7 @@ function App() {
 
       <div className="app-content">
         {/* Sidebar */}
-        {(view !== 'register' && view !== 'login' && view !== 'forgotPassword' && view !== 'resetPassword' && view !== 'upload' && view !== 'favorites' && view !== 'admin') && (
+        {(view !== 'register' && view !== 'login' && view !== 'forgotPassword' && view !== 'resetPassword' && view !== 'upload' && view !== 'favorites' && view !== 'admin' && view !== 'tags') && (
           <Sidebar
             tags={tags.tags}
             selectedTag={tags.selectedTag}
@@ -443,6 +445,18 @@ function App() {
             {/* ADMIN PANEL VIEW */}
             {view === 'admin' && auth.currentUser?.is_admin && (
               <AdminPanel currentUser={auth.currentUser} />
+            )}
+
+            {/* TAGS BROWSE VIEW */}
+            {view === 'tags' && (
+              <TagsBrowseView
+                onTagSelect={(tagName) => {
+                  tags.setTagSearch(tagName);
+                  tags.setTagSearchQuery(tagName);
+                  setView('posts');
+                  setPostsPage(0);
+                }}
+              />
             )}
           </main>
         </div>

@@ -1,4 +1,5 @@
 import { useCallback } from 'react';
+import { isVideo, getMediaUrl } from '../../utils/mediaUtils';
 
 export function PostDetail({
   post,
@@ -34,12 +35,22 @@ export function PostDetail({
   const poolsContainingPost = post._containingPools || [];
   const userPools = pools.filter(p => currentUser && p.creator_id === currentUser.id);
   const matchingPools = userPools.filter(p => p.name.toLowerCase().includes(poolSearch.toLowerCase()));
+  const mediaIsVideo = isVideo(post.image_filename);
+  const mediaUrl = getMediaUrl(post.image_filename);
 
   return (
     <div className="post-detail">
       <div className="detail-content">
         <div className="detail-image">
-          <img src={`http://localhost:8000/uploads/${post.image_filename}`} alt={post.description || 'Post'} />
+          {mediaIsVideo ? (
+            <video
+              src={mediaUrl}
+              controls
+              style={{ width: '100%', height: 'auto', maxHeight: '500px', objectFit: 'contain', borderRadius: '8px' }}
+            />
+          ) : (
+            <img src={mediaUrl} alt={post.description || 'Post'} />
+          )}
         </div>
         <div className="detail-info">
           {/* Description + Favorite Button */}

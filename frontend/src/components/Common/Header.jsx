@@ -1,4 +1,4 @@
-export function Header({ onBrowse, onUpload, onRegister, onLogin, onPools, currentUser, showFavorites, onFavorites, onLogout, onAdminPanel }) {
+export function Header({ onBrowse, onUpload, onRegister, onLogin, onPools, onTags, currentUser, showFavorites, onFavorites, onLogout, onAdminPanel }) {
   const isAdmin = currentUser && Boolean(currentUser.is_admin);
   
   return (
@@ -7,6 +7,7 @@ export function Header({ onBrowse, onUpload, onRegister, onLogin, onPools, curre
       <nav>
         <button onClick={onBrowse}>Browse</button>
         <button onClick={onPools}>Pools</button>
+        <button onClick={onTags}>Tags</button>
         {currentUser && showFavorites && (
           <button onClick={onFavorites}>Favorites</button>
         )}

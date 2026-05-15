@@ -341,21 +341,55 @@ async def list_users():
 
 @app.post("/api/posts", status_code=201)
 async def create_post(
-    image: UploadFile = File(...),
+    media: UploadFile = File(...),
     description: Optional[str] = Form(None),
     tags: str = Form(...),
     user = Depends(require_auth)
 ):
-    """Upload a new post with image and tags"""
+    """Upload a new post with image or video and tags"""
     conn = get_db()
     cursor = conn.cursor()
     
-    # Save image file
-    filename = f"{datetime.datetime.now().timestamp()}_{image.filename}"
+    # Validate file type and size
+    MAX_FILE_SIZE = 104857600  # 100MB in bytes
+    ALLOWED_IMAGE_TYPES = {"image/jpeg", "image/png", "image/gif", "image/webp"}
+    ALLOWED_VIDEO_TYPES = {"video/mp4", "video/webm", "video/quicktime", "video/x-msvideo"}
+    ALLOWED_EXTENSIONS = {".jpg", ".jpeg", ".png", ".gif", ".webp", ".mp4", ".webm", ".mov", ".avi"}
+    
+    # Get file extension
+    filename_lower = media.filename.lower()
+    file_ext = os.path.splitext(filename_lower)[1]
+    content_type = media.content_type or ""
+    
+    # Check file extension
+    if file_ext not in ALLOWED_EXTENSIONS:
+        conn.close()
+        raise HTTPException(status_code=400, detail=f"File type not allowed. Supported: images (JPG, PNG, GIF, WebP) and videos (MP4, WebM, MOV, AVI)")
+    
+    # Check MIME type
+    if content_type not in ALLOWED_IMAGE_TYPES and content_type not in ALLOWED_VIDEO_TYPES:
+        # Still allow if extension matches, as MIME type can be unreliable
+        if file_ext not in {".jpg", ".jpeg", ".png", ".gif", ".webp", ".mp4", ".webm", ".mov", ".avi"}:
+            conn.close()
+            raise HTTPException(status_code=400, detail="Invalid file type")
+    
+    # Check file size
+    file_content = await media.read()
+    file_size = len(file_content)
+    if file_size > MAX_FILE_SIZE:
+        conn.close()
+        raise HTTPException(status_code=400, detail=f"File too large. Maximum size is 100MB (your file is {file_size / 1024 / 1024:.2f}MB)")
+    
+    if file_size == 0:
+        conn.close()
+        raise HTTPException(status_code=400, detail="File is empty")
+    
+    # Save file
+    filename = f"{datetime.datetime.now().timestamp()}_{media.filename}"
     filepath = os.path.join(UPLOAD_DIR, filename)
     
     with open(filepath, "wb") as f:
-        shutil.copyfileobj(image.file, f)
+        f.write(file_content)
     
     # Create post
     upload_date = datetime.datetime.now().isoformat()
@@ -849,6 +883,53 @@ async def list_tags():
     conn.close()
     
     return [dict(t) for t in tags]
+
+@app.get("/api/tags/with-thumbnails")
+async def list_tags_with_thumbnails():
+    """List all tags with post counts and top favorited image thumbnail, sorted by popularity"""
+    conn = get_db()
+    cursor = conn.cursor()
+    
+    cursor.execute("""
+        SELECT t.id, t.tag_name, COUNT(pt.post_id) as post_count
+        FROM tags t
+        LEFT JOIN post_tags pt ON t.id = pt.tag_id
+        GROUP BY t.id, t.tag_name
+        ORDER BY post_count DESC, t.tag_name
+    """)
+    
+    tags_data = cursor.fetchall()
+    
+    # For each tag, get the top favorited post's image filename
+    tags_result = []
+    for tag in tags_data:
+        tag_id = tag["id"]
+        tag_name = tag["tag_name"]
+        post_count = tag["post_count"]
+        
+        # Get the most favorited post with this tag
+        cursor.execute("""
+            SELECT p.image_filename
+            FROM posts p
+            JOIN post_tags pt ON p.id = pt.post_id
+            WHERE pt.tag_id = ?
+            ORDER BY p.favorite_count DESC
+            LIMIT 1
+        """, (tag_id,))
+        
+        thumbnail_result = cursor.fetchone()
+        thumbnail_image = thumbnail_result["image_filename"] if thumbnail_result else None
+        
+        tags_result.append({
+            "id": tag_id,
+            "tag_name": tag_name,
+            "post_count": post_count,
+            "thumbnail_image": thumbnail_image
+        })
+    
+    conn.close()
+    
+    return tags_result
 
 # ============== REPORTING ENDPOINTS ==============
 

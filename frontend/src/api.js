@@ -78,6 +78,9 @@ export const api = {
   getTags: () => 
     axios.get(`${API_BASE}/tags`),
   
+  getTagsWithThumbnails: () =>
+    axios.get(`${API_BASE}/tags/with-thumbnails`),
+  
   // Reports (Admin only)
   getReportSummary: () =>
     axios.get(`${API_BASE}/reports/summary`),
@@ -146,4 +149,10 @@ export const api = {
   
   getAdminActivityLog: (limit = 100) =>
     axios.get(`${API_BASE}/admin/activity-log`, { params: { limit } }),
+};
+
+// Named exports for convenience
+export const listTagsWithThumbnails = async () => {
+  const response = await api.getTagsWithThumbnails();
+  return response.data;
 };
