@@ -24,13 +24,12 @@ export function usePosts() {
       return false;
     }
     if (!uploadFile) {
-      alert('Please select an image!');
+      alert('Please select a file (image or video)!');
       return false;
     }
 
     const formData = new FormData();
-    formData.append('image', uploadFile);
-    formData.append('uploader_id', currentUser.id);
+    formData.append('media', uploadFile);
     formData.append('description', uploadDescription);
     formData.append('tags', uploadTags);
 
