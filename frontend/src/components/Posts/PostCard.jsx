@@ -23,6 +23,8 @@ export function PostCard({ post, currentUserId, isAdmin, onCardClick, onDelete, 
         <div style={{ position: 'relative', width: '100%', paddingBottom: '100%' }}>
           <video
             src={mediaUrl}
+            controls
+            onClick={(e) => e.stopPropagation()}
             style={{
               position: 'absolute',
               top: 0,

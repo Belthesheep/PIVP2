@@ -46,6 +46,7 @@ export function PostDetail({
             <video
               src={mediaUrl}
               controls
+              autoPlay={false}
               style={{ width: '100%', height: 'auto', maxHeight: '500px', objectFit: 'contain', borderRadius: '8px' }}
             />
           ) : (
