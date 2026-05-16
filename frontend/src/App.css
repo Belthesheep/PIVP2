@@ -216,7 +216,7 @@ main {
   cursor: pointer;
   border-radius: 8px;
   overflow: hidden;
-  background-color: #f5f5f5;
+  background-color: #ffd690;
   transition: transform 0.2s, box-shadow 0.2s;
   box-shadow: 0 2px 4px rgba(0,0,0,0.1);
 }
@@ -233,7 +233,7 @@ main {
 }
 
 .tag-thumbnail-placeholder {
-  padding-bottom: 100%;
+  padding-bottom: 50%;
   background-color: #ddd;
   display: flex;
   align-items: center;
@@ -319,8 +319,8 @@ main {
 .auth-form button,
 .upload-form button {
   padding: 0.9rem 1rem;
-  background: #ffd690;
-  color: #222;
+  background: #1e6ed8;
+  color: #eee;
   border: none;
   border-radius: 4px;
   cursor: pointer;

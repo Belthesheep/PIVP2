@@ -1,4 +1,5 @@
 import { useCallback } from 'react';
+import { isVideo, getMediaUrl } from '../../utils/mediaUtils';
 
 export function Carousel({ items, currentIndex, isOpen, onPrev, onNext, onClose }) {
   const getItemFilename = useCallback((item) => {
@@ -8,6 +9,9 @@ export function Carousel({ items, currentIndex, isOpen, onPrev, onNext, onClose 
   if (!isOpen || items.length === 0) return null;
 
   const currentItem = items[currentIndex];
+  const filename = getItemFilename(currentItem);
+  const mediaUrl = getMediaUrl(filename);
+  const mediaIsVideo = isVideo(filename);
 
   return (
     <div className="carousel" style={{ position: 'fixed', inset: 0, zIndex: 50, background: 'rgba(0,0,0,0.8)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
@@ -15,11 +19,20 @@ export function Carousel({ items, currentIndex, isOpen, onPrev, onNext, onClose 
       <div className="carousel-content" style={{ maxWidth: '80%', textAlign: 'center' }}>
         {currentItem && (
           <>
-            <img
-              src={`http://localhost:8000/uploads/${getItemFilename(currentItem)}`}
-              alt="carousel"
-              style={{ maxHeight: '70vh', objectFit: 'contain' }}
-            />
+            {mediaIsVideo ? (
+              <video
+                src={mediaUrl}
+                controls
+                autoPlay={false}
+                style={{ maxHeight: '70vh', objectFit: 'contain', maxWidth: '100%' }}
+              />
+            ) : (
+              <img
+                src={mediaUrl}
+                alt="carousel"
+                style={{ maxHeight: '70vh', objectFit: 'contain' }}
+              />
+            )}
             <div className="carousel-info" style={{ marginTop: 8 }}>
               <p>{currentItem.description}</p>
               <small>by {currentItem.uploader_username}</small>
