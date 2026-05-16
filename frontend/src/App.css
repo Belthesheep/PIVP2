@@ -814,7 +814,7 @@ main {
 
 .carousel-btn:hover:not(:disabled) {
   background: #e53935;
-  color: #fff;
+  color: #000;
 }
 
 .carousel-btn:disabled {
@@ -837,7 +837,7 @@ main {
 .carousel-info {
   text-align: left;
   padding: 1rem;
-  background: #f9f9f9;
+  background: #ffd690;
   border-radius: 4px;
 }
 

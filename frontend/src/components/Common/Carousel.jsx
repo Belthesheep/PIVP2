@@ -15,7 +15,7 @@ export function Carousel({ items, currentIndex, isOpen, onPrev, onNext, onClose 
 
   return (
     <div className="carousel" style={{ position: 'fixed', inset: 0, zIndex: 50, background: 'rgba(0,0,0,0.8)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-      <button className="carousel-btn" onClick={onPrev} style={{ background: '#fff', color: '#000' }}>◀</button>
+      <button className="carousel-btn" onClick={onPrev}>◀</button>
       <div className="carousel-content" style={{ maxWidth: '80%', textAlign: 'center' }}>
         {currentItem && (
           <>
@@ -40,7 +40,7 @@ export function Carousel({ items, currentIndex, isOpen, onPrev, onNext, onClose 
           </>
         )}
       </div>
-      <button className="carousel-btn" onClick={onNext} style={{ background: '#fff', color: '#000' }}>▶</button>
+      <button className="carousel-btn" onClick={onNext} >▶</button>
       <button onClick={onClose} style={{ position: 'absolute', top: 20, right: 20, padding: 8 }}>Close</button>
     </div>
   );
