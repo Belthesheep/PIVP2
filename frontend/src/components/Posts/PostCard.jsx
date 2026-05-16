@@ -20,30 +20,22 @@ export function PostCard({ post, currentUserId, isAdmin, onCardClick, onDelete, 
   return (
     <div className="post-card" onClick={() => onCardClick(post.id)}>
       {mediaIsVideo ? (
-        <div style={{ position: 'relative', width: '100%', paddingBottom: '100%' }}>
-          <video
-            src={mediaUrl}
-            controls
-            onClick={(e) => e.stopPropagation()}
-            style={{
-              position: 'absolute',
-              top: 0,
-              left: 0,
-              width: '100%',
-              height: '100%',
-              objectFit: 'cover',
-              borderRadius: '8px 8px 0 0'
-            }}
-          />
+        <div style={{
+          position: 'relative',
+          width: '100%',
+          paddingBottom: '100%',
+          backgroundColor: '#1a1a1a',
+          borderRadius: '8px 8px 0 0',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center'
+        }}>
           <div style={{
-            position: 'absolute',
-            top: '50%',
-            left: '50%',
-            transform: 'translate(-50%, -50%)',
-            fontSize: '2rem',
-            opacity: 0.7
+            fontSize: '3rem',
+            opacity: 0.8,
+            cursor: 'pointer'
           }}>
-            🎬
+            ▶️
           </div>
         </div>
       ) : (
