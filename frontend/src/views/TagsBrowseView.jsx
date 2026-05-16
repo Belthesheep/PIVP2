@@ -46,85 +46,31 @@ export function TagsBrowseView({ onTagSelect }) {
         {tags.map(tag => (
           <div
             key={tag.id}
+            className="tag-card"
             onClick={() => handleTagClick(tag.tag_name)}
-            style={{
-              cursor: 'pointer',
-              borderRadius: '8px',
-              overflow: 'hidden',
-              backgroundColor: '#f5f5f5',
-              transition: 'transform 0.2s, box-shadow 0.2s',
-              boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
-              ':hover': {
-                transform: 'translateY(-4px)',
-                boxShadow: '0 4px 12px rgba(0,0,0,0.15)'
-              }
-            }}
-            onMouseEnter={(e) => {
-              e.currentTarget.style.transform = 'translateY(-4px)';
-              e.currentTarget.style.boxShadow = '0 4px 12px rgba(0,0,0,0.15)';
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.transform = 'translateY(0)';
-              e.currentTarget.style.boxShadow = '0 2px 4px rgba(0,0,0,0.1)';
-            }}
           >
             {tag.thumbnail_image ? (
-              <div style={{ position: 'relative', paddingBottom: '100%', overflow: 'hidden' }}>
+              <div className="tag-thumbnail-container">
                 {isVideo(tag.thumbnail_image) ? (
-                  <div style={{
-                    position: 'absolute',
-                    top: 0,
-                    left: 0,
-                    width: '100%',
-                    height: '100%',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    backgroundColor: '#222',
-                    fontSize: '2rem'
-                  }}>
+                  <div className="tag-thumbnail-video">
                     🎬
                   </div>
                 ) : (
                   <img
                     src={getMediaUrl(tag.thumbnail_image)}
                     alt={tag.tag_name}
-                    style={{
-                      position: 'absolute',
-                      top: 0,
-                      left: 0,
-                      width: '100%',
-                      height: '100%',
-                      objectFit: 'cover'
-                    }}
+                    className="tag-thumbnail-image"
                   />
                 )}
               </div>
             ) : (
-              <div style={{
-                paddingBottom: '100%',
-                backgroundColor: '#ddd',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                height: '150px',
-                fontSize: '2rem',
-                color: '#999'
-              }}>
+              <div className="tag-thumbnail-placeholder">
                 🏷️
               </div>
             )}
-            <div style={{ padding: '0.75rem' }}>
-              <h3 style={{
-                margin: '0 0 0.5rem 0',
-                fontSize: '0.9rem',
-                overflow: 'hidden',
-                textOverflow: 'ellipsis',
-                whiteSpace: 'nowrap'
-              }}>
-                {tag.tag_name}
-              </h3>
-              <small style={{ color: '#666' }}>
+            <div className="tag-info">
+              <h3>{tag.tag_name}</h3>
+              <small>
                 {tag.post_count} {tag.post_count === 1 ? 'post' : 'posts'}
               </small>
             </div>
