@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { api } from '../api';
+import { ReportDisplay } from '../components/Common/ReportDisplay';
 
 export function AdminPanel({ currentUser }) {
   const [users, setUsers] = useState([]);
@@ -13,6 +14,7 @@ export function AdminPanel({ currentUser }) {
 
   useEffect(() => {
     loadAdminData();
+    loadReport('summary'); // Load summary report on mount
   }, []);
 
   const loadAdminData = async () => {
@@ -288,14 +290,12 @@ export function AdminPanel({ currentUser }) {
                 >
                   ⬇ JSON
                 </button>
-                {reportType !== 'uploaders' && (
-                  <button 
-                    onClick={() => downloadReport('pdf')}
-                    className="btn-export"
-                  >
-                    ⬇ PDF
-                  </button>
-                )}
+                <button 
+                  onClick={() => downloadReport('pdf')}
+                  className="btn-export"
+                >
+                  ⬇ PDF
+                </button>
               </div>
             )}
           </div>
@@ -303,9 +303,7 @@ export function AdminPanel({ currentUser }) {
           {reportLoading && <p>Loading report...</p>}
 
           {reportData && (
-            <div className="report-data">
-              <pre>{JSON.stringify(reportData, null, 2)}</pre>
-            </div>
+            <ReportDisplay reportData={reportData} reportType={reportType} />
           )}
         </div>
       )}

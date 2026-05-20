@@ -270,6 +270,48 @@ def generate_pdf_report(report_type: str = "summary") -> bytes:
             ]))
             elements.append(posts_table)
         
+        elif report_type == "pools":
+            report = get_pool_statistics()
+            
+            # Pool statistics
+            elements.append(Paragraph("Pool Statistics", heading_style))
+            pools_data = [
+                ["Metric", "Value"],
+                ["Total Pools", str(report["total_pools"])],
+            ]
+            pools_table = Table(pools_data, colWidths=[3*inch, 2*inch])
+            pools_table.setStyle(TableStyle([
+                ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#1e6ed8')),
+                ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
+                ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
+                ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+                ('FONTSIZE', (0, 0), (-1, 0), 12),
+                ('BOTTOMPADDING', (0, 0), (-1, 0), 12),
+                ('BACKGROUND', (0, 1), (-1, -1), colors.beige),
+                ('GRID', (0, 0), (-1, -1), 1, colors.black)
+            ]))
+            elements.append(pools_table)
+            elements.append(Spacer(1, 0.2 * inch))
+            
+            # Top pool creators
+            elements.append(Paragraph("Top Pool Creators", heading_style))
+            creators_data = [["Username", "Pool Count"]]
+            for creator in report["top_creators"]:
+                creators_data.append([creator["username"], str(creator["pool_count"])])
+            
+            creators_table = Table(creators_data, colWidths=[3*inch, 2*inch])
+            creators_table.setStyle(TableStyle([
+                ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#1e6ed8')),
+                ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
+                ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
+                ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+                ('FONTSIZE', (0, 0), (-1, 0), 12),
+                ('BOTTOMPADDING', (0, 0), (-1, 0), 12),
+                ('BACKGROUND', (0, 1), (-1, -1), colors.beige),
+                ('GRID', (0, 0), (-1, -1), 1, colors.black)
+            ]))
+            elements.append(creators_table)
+        
         elif report_type == "tags":
             report = get_tag_statistics(20)
             
@@ -290,6 +332,27 @@ def generate_pdf_report(report_type: str = "summary") -> bytes:
                 ('GRID', (0, 0), (-1, -1), 1, colors.black)
             ]))
             elements.append(tags_table)
+        
+        elif report_type == "uploaders":
+            uploaders = get_top_uploaders()
+            
+            elements.append(Paragraph("Top Uploaders", heading_style))
+            uploaders_data = [["Username", "Post Count"]]
+            for uploader in uploaders:
+                uploaders_data.append([uploader["username"], str(uploader["post_count"])])
+            
+            uploaders_table = Table(uploaders_data, colWidths=[3*inch, 2*inch])
+            uploaders_table.setStyle(TableStyle([
+                ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#1e6ed8')),
+                ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
+                ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
+                ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+                ('FONTSIZE', (0, 0), (-1, 0), 12),
+                ('BOTTOMPADDING', (0, 0), (-1, 0), 12),
+                ('BACKGROUND', (0, 1), (-1, -1), colors.beige),
+                ('GRID', (0, 0), (-1, -1), 1, colors.black)
+            ]))
+            elements.append(uploaders_table)
         
         # Build PDF
         doc.build(elements)
