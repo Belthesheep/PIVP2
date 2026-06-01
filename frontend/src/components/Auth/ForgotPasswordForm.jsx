@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { api } from '../../api';
+import { translations } from '../../translations';
 
 export function ForgotPasswordForm({ onBack }) {
   const [email, setEmail] = useState('');
@@ -17,7 +18,7 @@ export function ForgotPasswordForm({ onBack }) {
       setSubmitted(true);
       setEmail('');
     } catch (err) {
-      setError(err.response?.data?.detail || 'Failed to request password reset');
+      setError(err.response?.data?.detail || 'No se pudo solicitar el restablecimiento de contraseña');
     } finally {
       setLoading(false);
     }
@@ -27,10 +28,10 @@ export function ForgotPasswordForm({ onBack }) {
     return (
       <div className="auth-form-container">
         <div className="auth-form">
-          <h2>Check Your Email</h2>
-          <p>If an account exists with this email, you'll receive a password reset link.</p>
+          <h2>{translations.resetPassword}</h2>
+          <p>{translations.resetLink}</p>
           <button onClick={onBack} className="auth-button">
-            Back to Login
+            {translations.back}
           </button>
         </div>
       </div>
@@ -40,13 +41,13 @@ export function ForgotPasswordForm({ onBack }) {
   return (
     <div className="auth-form-container">
       <div className="auth-form">
-        <h2>Forgot Password</h2>
+        <h2>{translations.forgotPassword}</h2>
         <form onSubmit={handleSubmit}>
           {error && <div className="error-message">{error}</div>}
           
           <input
             type="email"
-            placeholder="Enter your email"
+            placeholder={translations.email}
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             required
@@ -54,12 +55,12 @@ export function ForgotPasswordForm({ onBack }) {
           />
           
           <button type="submit" disabled={loading}>
-            {loading ? 'Sending...' : 'Send Reset Link'}
+            {loading ? translations.loading : translations.sendReset}
           </button>
         </form>
         
         <button onClick={onBack} className="auth-link-button">
-          Back to Login
+          {translations.back}
         </button>
       </div>
     </div>

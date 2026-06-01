@@ -47,6 +47,7 @@ function App() {
   const [poolsPage, setPoolsPage] = useState(0);
   const [showTOSModal, setShowTOSModal] = useState(false);
   const [tosAccepted, setTosAccepted] = useState(false);
+  const [mostRelevant, setMostRelevant] = useState(true);
 
   const POSTS_PER_PAGE = 16;
   const POOLS_PER_PAGE = 30;
@@ -72,8 +73,8 @@ function App() {
 
   // Load posts when tag changes
   useEffect(() => {
-    posts.loadPosts(tags.selectedTag);
-  }, [tags.selectedTag]);
+    posts.loadPosts(tags.selectedTag, null, mostRelevant);
+  }, [tags.selectedTag, mostRelevant]);
 
   const loadAllData = async () => {
     try {
@@ -378,6 +379,8 @@ function App() {
                 onPageChange={setPostsPage}
                 isAdmin={auth.currentUser?.is_admin}
                 onAdminDelete={handleAdminDeletePost}
+                mostRelevant={mostRelevant}
+                onToggleMostRelevant={setMostRelevant}
               />
             )}
 

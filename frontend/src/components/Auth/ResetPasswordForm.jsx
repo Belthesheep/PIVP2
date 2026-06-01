@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { api } from '../../api';
+import { translations } from '../../translations';
 
 export function ResetPasswordForm({ onBack }) {
   const [token, setToken] = useState('');
@@ -17,7 +18,7 @@ export function ResetPasswordForm({ onBack }) {
     const resetToken = params.get('token');
     
     if (!resetToken) {
-      setError('No reset token provided');
+      setError('No se proporcionó token de restablecimiento');
       setValidating(false);
       return;
     }
@@ -30,7 +31,7 @@ export function ResetPasswordForm({ onBack }) {
         await api.validateResetToken(resetToken);
         setValid(true);
       } catch (err) {
-        setError(err.response?.data?.detail || 'Invalid or expired reset token');
+        setError(err.response?.data?.detail || 'Token de restablecimiento inválido o expirado');
       } finally {
         setValidating(false);
       }
@@ -44,12 +45,12 @@ export function ResetPasswordForm({ onBack }) {
     setError('');
 
     if (newPassword !== confirmPassword) {
-      setError('Passwords do not match');
+      setError('Las contraseñas no coinciden');
       return;
     }
 
     if (newPassword.length < 6) {
-      setError('Password must be at least 6 characters');
+      setError('La contraseña debe tener al menos 6 caracteres');
       return;
     }
 
@@ -68,7 +69,7 @@ export function ResetPasswordForm({ onBack }) {
         }
       }, 3000);
     } catch (err) {
-      setError(err.response?.data?.detail || 'Failed to reset password');
+      setError(err.response?.data?.detail || 'No se pudo restablecer la contraseña');
     } finally {
       setLoading(false);
     }
@@ -78,7 +79,7 @@ export function ResetPasswordForm({ onBack }) {
     return (
       <div className="auth-form-container">
         <div className="auth-form">
-          <p>Validating reset token...</p>
+          <p>{translations.loading}...</p>
         </div>
       </div>
     );
@@ -88,10 +89,10 @@ export function ResetPasswordForm({ onBack }) {
     return (
       <div className="auth-form-container">
         <div className="auth-form">
-          <h2>Invalid Reset Link</h2>
+          <h2>Enlace de Restablecimiento Inválido</h2>
           <p className="error-message">{error}</p>
           <button onClick={() => navigate('/')} className="auth-button">
-            Back to Login
+            {translations.back}
           </button>
         </div>
       </div>
@@ -102,8 +103,8 @@ export function ResetPasswordForm({ onBack }) {
     return (
       <div className="auth-form-container">
         <div className="auth-form">
-          <h2>Password Reset Successfully!</h2>
-          <p>Your password has been reset. Redirecting to login...</p>
+          <h2>¡Contraseña Restablecida!</h2>
+          <p>Tu contraseña ha sido restablecida. Redirigiendo a inicio de sesión...</p>
         </div>
       </div>
     );
@@ -112,13 +113,13 @@ export function ResetPasswordForm({ onBack }) {
   return (
     <div className="auth-form-container">
       <div className="auth-form">
-        <h2>Reset Password</h2>
+        <h2>{translations.resetPassword}</h2>
         <form onSubmit={handleSubmit}>
           {error && <div className="error-message">{error}</div>}
           
           <input
             type="password"
-            placeholder="New Password"
+            placeholder={translations.newPassword}
             value={newPassword}
             onChange={(e) => setNewPassword(e.target.value)}
             required
@@ -127,7 +128,7 @@ export function ResetPasswordForm({ onBack }) {
           
           <input
             type="password"
-            placeholder="Confirm Password"
+            placeholder={translations.confirmPassword}
             value={confirmPassword}
             onChange={(e) => setConfirmPassword(e.target.value)}
             required
@@ -135,7 +136,7 @@ export function ResetPasswordForm({ onBack }) {
           />
           
           <button type="submit" disabled={loading}>
-            {loading ? 'Resetting...' : 'Reset Password'}
+            {loading ? translations.loading : translations.resetPassword}
           </button>
         </form>
       </div>

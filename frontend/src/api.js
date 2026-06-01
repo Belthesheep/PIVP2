@@ -34,8 +34,8 @@ export const api = {
     axios.get(`${API_BASE}/users`),
   
   // Posts
-  getPosts: (tag = null, userId = null) => 
-    axios.get(`${API_BASE}/posts`, { params: { tag, user_id: userId } }),
+  getPosts: (tag = null, userId = null, mostRelevant = true) => 
+    axios.get(`${API_BASE}/posts`, { params: { tag, user_id: userId, most_relevant: mostRelevant } }),
   
   getPost: (id) => 
     axios.get(`${API_BASE}/posts/${id}`),

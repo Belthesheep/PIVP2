@@ -11,6 +11,8 @@ import os
 import shutil
 import secrets
 import re
+import jwt
+from email_service import generate_reset_token, validate_reset_token, send_reset_email
 from analytics_service import (
     get_post_count,
     get_user_count,
@@ -227,103 +229,70 @@ async def get_me(user = Depends(get_current_user)):
 
 @app.post("/api/auth/request-password-reset")
 async def request_password_reset(request: PasswordResetRequest):
-    """Request a password reset token via email"""
+    """Solicitar token de reseteo de contraseña por correo con JWT"""
     conn = get_db()
     cursor = conn.cursor()
     
-    # Find user by email
+    # Buscar usuario por correo
     cursor.execute("SELECT id, username, email FROM users WHERE email = ?", (request.email,))
     user = cursor.fetchone()
     
     if not user:
-        # Don't reveal if email exists or not for security
+        # No revelar si el correo existe o no por seguridad
         conn.close()
-        return {"message": "If the email is registered, a password reset link has been sent"}
+        return {"message": "Si el correo está registrado, recibirás un enlace para restablecer tu contraseña"}
     
-    # Generate reset token (valid for 1 hour)
-    reset_token = secrets.token_urlsafe(32)
-    created_at = datetime.datetime.now().isoformat()
-    expires_at = (datetime.datetime.now() + datetime.timedelta(hours=1)).isoformat()
+    # Generar token JWT
+    try:
+        reset_token = generate_reset_token(user["id"], user["email"])
+    except Exception as e:
+        conn.close()
+        raise HTTPException(status_code=500, detail=f"Error generando token: {str(e)}")
     
-    # Delete any existing reset tokens for this user
-    cursor.execute("DELETE FROM password_reset_tokens WHERE user_id = ?", (user["id"],))
+    # Enviar correo con enlace
+    email_sent = send_reset_email(user["email"], user["username"], reset_token)
     
-    # Store new reset token
-    cursor.execute(
-        "INSERT INTO password_reset_tokens (user_id, token, created_at, expires_at) VALUES (?, ?, ?, ?)",
-        (user["id"], reset_token, created_at, expires_at)
-    )
-    conn.commit()
+    # En modo desarrollo, mostrar token en consola si el correo no se envió
+    if not email_sent:
+        print(f"[DEV] Token de reseteo para {user['email']}: {reset_token}")
+    
     conn.close()
     
-    # TODO: In production, send email with reset link
-    # For now, return the token (DON'T DO THIS IN PRODUCTION!)
-    print(f"[DEV] Password reset token for {user['email']}: {reset_token}")
-    
-    return {"message": "If the email is registered, a password reset link has been sent"}
+    return {"message": "Si el correo está registrado, recibirás un enlace para restablecer tu contraseña"}
 
 @app.post("/api/auth/validate-reset-token")
-async def validate_reset_token(token: str):
-    """Validate a password reset token"""
-    conn = get_db()
-    cursor = conn.cursor()
-    
-    cursor.execute(
-        "SELECT user_id, expires_at FROM password_reset_tokens WHERE token = ?",
-        (token,)
-    )
-    reset_record = cursor.fetchone()
-    conn.close()
-    
-    if not reset_record:
-        raise HTTPException(status_code=400, detail="Invalid reset token")
-    
-    # Check if token has expired
-    expires_at = datetime.datetime.fromisoformat(reset_record["expires_at"])
-    if datetime.datetime.now() > expires_at:
-        raise HTTPException(status_code=400, detail="Reset token has expired")
-    
-    return {"valid": True, "user_id": reset_record["user_id"]}
+async def validate_reset_token_endpoint(token: str):
+    """Validar token JWT para reseteo de contraseña"""
+    try:
+        payload = validate_reset_token(token)
+        return {"valid": True, "user_id": payload["user_id"], "email": payload["email"]}
+    except jwt.InvalidTokenError as e:
+        raise HTTPException(status_code=400, detail=f"Token inválido: {str(e)}")
 
 @app.post("/api/auth/reset-password")
 async def reset_password(reset: PasswordReset):
-    """Reset password using token"""
+    """Restablecer contraseña usando token JWT"""
+    # Validar token primero
+    try:
+        payload = validate_reset_token(reset.token)
+        user_id = payload["user_id"]
+    except jwt.InvalidTokenError as e:
+        raise HTTPException(status_code=400, detail=f"Token inválido o expirado: {str(e)}")
+    
     conn = get_db()
     cursor = conn.cursor()
     
-    # Validate token
-    cursor.execute(
-        "SELECT user_id, expires_at FROM password_reset_tokens WHERE token = ?",
-        (reset.token,)
-    )
-    reset_record = cursor.fetchone()
-    
-    if not reset_record:
-        conn.close()
-        raise HTTPException(status_code=400, detail="Invalid reset token")
-    
-    # Check if token has expired
-    expires_at = datetime.datetime.fromisoformat(reset_record["expires_at"])
-    if datetime.datetime.now() > expires_at:
-        conn.close()
-        raise HTTPException(status_code=400, detail="Reset token has expired")
-    
-    # Hash new password and update user
+    # Actualizar contraseña
     password_hash = hash_password(reset.new_password)
-    user_id = reset_record["user_id"]
-    
     cursor.execute(
         "UPDATE users SET password_hash = ? WHERE id = ?",
         (password_hash, user_id)
     )
     
-    # Delete the used reset token
-    cursor.execute("DELETE FROM password_reset_tokens WHERE token = ?", (reset.token,))
-    
     conn.commit()
     conn.close()
     
-    return {"message": "Password reset successfully"}
+    return {"message": "Contraseña restablecida exitosamente"}
 
 # ============== USER ENDPOINTS ==============
 
@@ -414,12 +383,13 @@ async def create_post(
     return {"id": post_id, "message": "Post created successfully", "tags": tag_list}
 
 @app.get("/api/posts")
-async def list_posts(tag: Optional[str] = None, user_id: Optional[int] = None):
-    """List all posts, optionally filtered by tag or user"""
+async def list_posts(tag: Optional[str] = None, user_id: Optional[int] = None, most_relevant: bool = True):
+    """Listar posts, opcionalmente filtrados por etiqueta, usuario o relevancia"""
     conn = get_db()
     cursor = conn.cursor()
     
     if tag:
+        # Filtrar por etiqueta
         query = """
             SELECT DISTINCT p.id, p.image_filename, p.uploader_id, u.username as uploader_username,
                    p.upload_date, p.description, p.favorite_count
@@ -442,13 +412,24 @@ async def list_posts(tag: Optional[str] = None, user_id: Optional[int] = None):
         """
         cursor.execute(query, (user_id,))
     else:
-        query = """
-            SELECT p.id, p.image_filename, p.uploader_id, u.username as uploader_username,
-                   p.upload_date, p.description, p.favorite_count
-            FROM posts p
-            JOIN users u ON p.uploader_id = u.id
-            ORDER BY p.upload_date DESC
-        """
+        # Aplicar filtro de "más relevante" (últimos 7 días, ordenados por favoritos)
+        if most_relevant:
+            query = """
+                SELECT p.id, p.image_filename, p.uploader_id, u.username as uploader_username,
+                       p.upload_date, p.description, p.favorite_count
+                FROM posts p
+                JOIN users u ON p.uploader_id = u.id
+                WHERE p.upload_date >= datetime('now', '-7 days')
+                ORDER BY p.favorite_count DESC, p.upload_date DESC
+            """
+        else:
+            query = """
+                SELECT p.id, p.image_filename, p.uploader_id, u.username as uploader_username,
+                       p.upload_date, p.description, p.favorite_count
+                FROM posts p
+                JOIN users u ON p.uploader_id = u.id
+                ORDER BY p.upload_date DESC
+            """
         cursor.execute(query)
     
     posts = cursor.fetchall()

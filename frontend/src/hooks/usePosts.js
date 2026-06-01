@@ -7,9 +7,9 @@ export function usePosts() {
   const [uploadDescription, setUploadDescription] = useState('');
   const [uploadTags, setUploadTags] = useState('');
 
-  const loadPosts = useCallback(async (tag = null, userId = null) => {
+  const loadPosts = useCallback(async (tag = null, userId = null, mostRelevant = true) => {
     try {
-      const res = await api.getPosts(tag, userId);
+      const res = await api.getPosts(tag, userId, mostRelevant);
       setPosts(res.data || []);
       return res.data;
     } catch (error) {
