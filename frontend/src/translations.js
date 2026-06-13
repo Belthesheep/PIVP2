@@ -57,17 +57,44 @@ export const translations = {
   editPool: "Editar Colección",
   deletePool: "Eliminar Colección",
   noPoolsFound: "No se encontraron colecciones",
+<<<<<<< Updated upstream
+=======
+  browsePoolsTitle: "Mis Colecciones",
+>>>>>>> Stashed changes
 
   // Tags
   tags: "Etiquetas",
   browseTags: "Explorar Etiquetas",
+<<<<<<< Updated upstream
+=======
+  browsTagsTitle: "Explorar Etiquetas",
+>>>>>>> Stashed changes
   addTag: "Agregar Etiqueta",
   removeTag: "Quitar Etiqueta",
   tagName: "Nombre de Etiqueta",
   noTagsFound: "No se encontraron etiquetas",
 
+<<<<<<< Updated upstream
   // Admin
   admin: "Administración",
+=======
+  // Upload
+  uploadTitle: "Subir Publicación",
+  selectFile: "Seleccionar Archivo",
+  tags: "Etiquetas",
+  tagInput: "Ingresa etiquetas separadas por comas",
+  addTags: "Agregar Etiquetas",
+  descriptionPlaceholder: "Descripción de la publicación (opcional)",
+
+  // Search
+  searchPlaceholder: "Buscar etiquetas...",
+  searchTagsTitle: "Buscar por Etiquetas",
+  noPostsMatch: "No hay publicaciones que coincidan con las etiquetas o búsqueda seleccionadas.",
+
+  // Admin
+  admin: "Administración",
+  adminPanel: "Panel de Administración",
+>>>>>>> Stashed changes
   users: "Usuarios",
   statistics: "Estadísticas",
   reports: "Reportes",
@@ -76,6 +103,24 @@ export const translations = {
   unbanUser: "Desbloquear Usuario",
   activeUsers: "Usuarios Activos",
   totalPosts: "Total de Publicaciones",
+<<<<<<< Updated upstream
+=======
+  userName: "Nombre de Usuario",
+  userEmail: "Correo Electrónico",
+  totalUsers: "Total de Usuarios",
+  totalPools: "Total de Colecciones",
+  totalTags: "Total de Etiquetas",
+  lastActivity: "Última Actividad",
+  actions: "Acciones",
+  permanentDelete: "Eliminar Permanentemente",
+  restore: "Restaurar",
+
+  // Favorites
+  myFavorites: "Mis Favoritos",
+  addedToFavorites: "Agregado a favoritos",
+  removedFromFavorites: "Removido de favoritos",
+  noFavorites: "No tienes publicaciones favoritas",
+>>>>>>> Stashed changes
 
   // Messages & Alerts
   success: "Éxito",

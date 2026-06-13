@@ -1,5 +1,6 @@
 import { useCallback } from 'react';
 import { isVideo, getMediaUrl } from '../../utils/mediaUtils';
+import { translations } from '../../translations';
 
 export function PostDetail({
   post,
@@ -56,18 +57,18 @@ export function PostDetail({
         <div className="detail-info">
           {/* Description + Favorite Button */}
           <div className="detail-header">
-            <h2>{post.description || 'No description'}</h2>
+            <h2>{post.description || 'Sin descripción'}</h2>
             <button
               className={post._favorited ? 'btn-favorited' : 'btn-favorite'}
               onClick={handleToggleFavorite}
             >
-              {post._favorited ? 'Favorited' : 'Favorite'} • {post.favorite_count ?? 0}
+              {post._favorited ? 'En Favoritos' : 'Agregar a Favoritos'} • {post.favorite_count ?? 0}
             </button>
           </div>
 
           {/* Tags */}
           <div className="detail-section">
-            <h3>Tags</h3>
+            <h3>{translations.tags}</h3>
             <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
               {(post.tags || []).map(t => <span key={t} className="tag">{t}</span>)}
             </div>
@@ -76,10 +77,10 @@ export function PostDetail({
           {/* Pools and Add to Pool */}
           <div className="detail-pools-row">
             <div className="pools-column">
-              <h3>Pools</h3>
+              <h3>{translations.pools}</h3>
               <div className="pool-links">
                 {poolsContainingPost.length === 0 ? (
-                  <div>No pools contain this post</div>
+                  <div>Esta publicación no está en ninguna colección</div>
                 ) : (
                   poolsContainingPost.map(pool => (
                     <button key={pool.id} className="pool-link" onClick={() => onOpenPool(pool.id)}>
@@ -91,9 +92,9 @@ export function PostDetail({
             </div>
 
             <div className="add-to-pool-column">
-              <h3>Add to pool</h3>
+              <h3>Agregar a Colección</h3>
               <input
-                placeholder="Search pools by name"
+                placeholder="Buscar colecciones por nombre"
                 value={poolSearch}
                 onChange={(e) => onPoolSearchChange(e.target.value)}
                 style={{ width: '100%', padding: '8px 10px', borderRadius: 6, border: '1px solid rgba(20,40,80,0.06)', marginBottom: 8 }}
@@ -101,7 +102,7 @@ export function PostDetail({
               {poolSearch && (
                 <div className="suggestion-list" style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                   {matchingPools.length === 0 ? (
-                    <div style={{ color: '#666' }}>No matching pools</div>
+                    <div style={{ color: '#666' }}>Sin colecciones coincidentes</div>
                   ) : (
                     matchingPools.map(pool => (
                       <button
@@ -113,7 +114,7 @@ export function PostDetail({
                           onPoolSearchChange('');
                         }}
                       >
-                        {pool.name} <small style={{ marginLeft: 8, color: '#fff', opacity: 0.9 }}>{poolPostCount(pool)} posts</small>
+                        {pool.name} <small style={{ marginLeft: 8, color: '#fff', opacity: 0.9 }}>{poolPostCount(pool)} publicaciones</small>
                       </button>
                     ))
                   )}
@@ -126,7 +127,7 @@ export function PostDetail({
           <div className="detail-section detail-footer">
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <div>
-                <h3>Uploader</h3>
+                <h3>Autor</h3>
                 <small>{post.uploader_username}</small>
               </div>
               <div style={{ display: 'flex', gap: 8 }}>
@@ -135,7 +136,7 @@ export function PostDetail({
                     className="delete-btn"
                     onClick={handleDelete}
                   >
-                    Delete
+                    {translations.delete}
                   </button>
                 )}
                 {currentUser?.is_admin && currentUser?.id !== post.uploader_id && (
@@ -143,7 +144,7 @@ export function PostDetail({
                     className="delete-btn-admin"
                     onClick={handleAdminDelete}
                   >
-                    Delete (Admin)
+                    {translations.delete} (Admin)
                   </button>
                 )}
               </div>
