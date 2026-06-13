@@ -36,10 +36,10 @@ export function Sidebar({
 
   return (
     <aside className="sidebar">
-      <h3>Search</h3>
+      <h3>Buscar por Etiquetas</h3>
       <div style={{ marginBottom: 8, position: 'relative' }}>
         <input
-          placeholder="Search tags (comma-separated)"
+          placeholder="Buscar etiquetas..."
           value={tagSearch}
           onChange={(e) => onTagSearchChange(e.target.value)}
           onKeyDown={(e) => {

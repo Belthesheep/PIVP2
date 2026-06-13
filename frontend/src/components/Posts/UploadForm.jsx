@@ -30,8 +30,8 @@ export function UploadForm({ currentUser, uploadFile, uploadDescription, uploadT
 
   return (
     <div className="upload-form">
-      <h2>Upload New Post</h2>
-      {!currentUser && <p className="warning">⚠️ Please login first!</p>}
+      <h2>Subir Publicación</h2>
+      {!currentUser && <p className="warning">⚠️ Por favor, inicia sesión primero</p>}
       <form onSubmit={handleSubmit}>
         <input
           type="file"
@@ -55,24 +55,24 @@ export function UploadForm({ currentUser, uploadFile, uploadDescription, uploadT
               />
             )}
             <small style={{ display: 'block', marginTop: '0.5rem', color: '#666' }}>
-              {fileType === 'video' ? '📹 Video selected' : '🖼️ Image selected'}
+              {fileType === 'video' ? '📹 Vídeo seleccionado' : '🖼️ Imagen seleccionada'}
             </small>
           </div>
         )}
         <input
           type="text"
-          placeholder="Description (optional)"
+          placeholder="Descripción de la publicación (opcional)"
           value={uploadDescription}
           onChange={(e) => onDescriptionChange(e.target.value)}
         />
         <input
           type="text"
-          placeholder="Tags (comma-separated)"
+          placeholder="Ingresa etiquetas separadas por comas"
           value={uploadTags}
           onChange={(e) => onTagsChange(e.target.value)}
           required
         />
-        <button type="submit" disabled={!currentUser}>Upload</button>
+        <button type="submit" disabled={!currentUser}>Subir</button>
       </form>
     </div>
   );

@@ -1,5 +1,4 @@
 import { useCallback } from 'react';
-import { translations } from '../../translations';
 
 export function RegisterForm({ username, email, password, onUsernameChange, onEmailChange, onPasswordChange, onSubmit }) {
   const handleSubmit = useCallback((e) => {
@@ -9,30 +8,30 @@ export function RegisterForm({ username, email, password, onUsernameChange, onEm
 
   return (
     <div className="auth-form">
-      <h2>{translations.register}</h2>
+      <h2>Registrarse</h2>
       <form onSubmit={handleSubmit}>
         <input
           type="text"
-          placeholder={`${translations.username} (${translations.minChars || 'mín 3 caracteres'})`}
+          placeholder="Nombre de Usuario (mín 3 caracteres)"
           value={username}
           onChange={(e) => onUsernameChange(e.target.value)}
           required
         />
         <input
           type="email"
-          placeholder={translations.email}
+          placeholder="Correo Electrónico"
           value={email}
           onChange={(e) => onEmailChange(e.target.value)}
           required
         />
         <input
           type="password"
-          placeholder={`${translations.password} (${translations.minChars || 'mín 6 caracteres'})`}
+          placeholder="Contraseña (mín 6 caracteres)"
           value={password}
           onChange={(e) => onPasswordChange(e.target.value)}
           required
         />
-        <button type="submit">{translations.register}</button>
+        <button type="submit">Registrarse</button>
       </form>
     </div>
   );

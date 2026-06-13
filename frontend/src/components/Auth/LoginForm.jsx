@@ -1,5 +1,4 @@
 import { useCallback } from 'react';
-import { translations } from '../../translations';
 
 export function LoginForm({ username, password, onUsernameChange, onPasswordChange, onSubmit }) {
   const handleSubmit = useCallback((e) => {
@@ -9,23 +8,23 @@ export function LoginForm({ username, password, onUsernameChange, onPasswordChan
 
   return (
     <div className="auth-form">
-      <h2>{translations.login}</h2>
+      <h2>Iniciar Sesión</h2>
       <form onSubmit={handleSubmit}>
         <input
           type="text"
-          placeholder={translations.username}
+          placeholder="Nombre de Usuario"
           value={username}
           onChange={(e) => onUsernameChange(e.target.value)}
           required
         />
         <input
           type="password"
-          placeholder={translations.password}
+          placeholder="Contraseña"
           value={password}
           onChange={(e) => onPasswordChange(e.target.value)}
           required
         />
-        <button type="submit">{translations.login}</button>
+        <button type="submit">Iniciar Sesión</button>
       </form>
     </div>
   );

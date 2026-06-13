@@ -1,6 +1,5 @@
 import { useState, useEffect } from 'react';
 import { api } from '../../api';
-import { translations } from '../../translations';
 
 export function ResetPasswordForm({ onBack }) {
   const [token, setToken] = useState('');
@@ -79,7 +78,7 @@ export function ResetPasswordForm({ onBack }) {
     return (
       <div className="auth-form-container">
         <div className="auth-form">
-          <p>{translations.loading}...</p>
+          <p>Cargando...</p>
         </div>
       </div>
     );
@@ -92,7 +91,7 @@ export function ResetPasswordForm({ onBack }) {
           <h2>Enlace de Restablecimiento Inválido</h2>
           <p className="error-message">{error}</p>
           <button onClick={() => navigate('/')} className="auth-button">
-            {translations.back}
+            Atrás
           </button>
         </div>
       </div>
@@ -113,13 +112,13 @@ export function ResetPasswordForm({ onBack }) {
   return (
     <div className="auth-form-container">
       <div className="auth-form">
-        <h2>{translations.resetPassword}</h2>
+        <h2>Restablecer Contraseña</h2>
         <form onSubmit={handleSubmit}>
           {error && <div className="error-message">{error}</div>}
           
           <input
             type="password"
-            placeholder={translations.newPassword}
+            placeholder="Nueva Contraseña"
             value={newPassword}
             onChange={(e) => setNewPassword(e.target.value)}
             required
@@ -128,7 +127,7 @@ export function ResetPasswordForm({ onBack }) {
           
           <input
             type="password"
-            placeholder={translations.confirmPassword}
+            placeholder="Confirmar Contraseña"
             value={confirmPassword}
             onChange={(e) => setConfirmPassword(e.target.value)}
             required
@@ -136,7 +135,7 @@ export function ResetPasswordForm({ onBack }) {
           />
           
           <button type="submit" disabled={loading}>
-            {loading ? translations.loading : translations.resetPassword}
+            {loading ? 'Cargando...' : 'Restablecer Contraseña'}
           </button>
         </form>
       </div>

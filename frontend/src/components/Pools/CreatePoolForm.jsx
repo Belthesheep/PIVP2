@@ -16,18 +16,18 @@ export function CreatePoolForm({ onCreate }) {
     <form className="pool-create-form" onSubmit={handleSubmit}>
       <input
         className="pool-create-input"
-        placeholder="Pool name"
+        placeholder="Nombre de Colección"
         value={name}
         onChange={(e) => setName(e.target.value)}
         required
       />
       <input
         className="pool-create-input"
-        placeholder="Description"
+        placeholder="Descripción de Colección"
         value={desc}
         onChange={(e) => setDesc(e.target.value)}
       />
-      <button type="submit" className="pool-create-btn">Create Pool</button>
+      <button type="submit" className="pool-create-btn">Crear Colección</button>
     </form>
   );
 }

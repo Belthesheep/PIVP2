@@ -2,7 +2,7 @@ import { PostCard } from './PostCard';
 
 export function PostGrid({ posts, currentUserId, isAdmin, onCardClick, onDelete, onAdminDelete }) {
   if (posts.length === 0) {
-    return <p>No posts match the selected tags or search.</p>;
+    return <p>No hay publicaciones que coincidan con las etiquetas o búsqueda seleccionadas.</p>;
   }
 
   return (

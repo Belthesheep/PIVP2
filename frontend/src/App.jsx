@@ -336,7 +336,7 @@ function App() {
                   onClick={() => setView('forgotPassword')}
                   className="auth-link-button"
                 >
-                  Forgot Password?
+                  ¿Olvidaste tu contraseña?
                 </button>
               </div>
             </div>

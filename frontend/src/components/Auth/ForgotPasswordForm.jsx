@@ -1,6 +1,5 @@
 import { useState } from 'react';
 import { api } from '../../api';
-import { translations } from '../../translations';
 
 export function ForgotPasswordForm({ onBack }) {
   const [email, setEmail] = useState('');
@@ -28,10 +27,10 @@ export function ForgotPasswordForm({ onBack }) {
     return (
       <div className="auth-form-container">
         <div className="auth-form">
-          <h2>{translations.resetPassword}</h2>
-          <p>{translations.resetLink}</p>
+          <h2>Restablecer Contraseña</h2>
+          <p>Enlace de restablecimiento enviado a tu correo</p>
           <button onClick={onBack} className="auth-button">
-            {translations.back}
+            Atrás
           </button>
         </div>
       </div>
@@ -41,13 +40,13 @@ export function ForgotPasswordForm({ onBack }) {
   return (
     <div className="auth-form-container">
       <div className="auth-form">
-        <h2>{translations.forgotPassword}</h2>
+        <h2>¿Olvidaste tu contraseña?</h2>
         <form onSubmit={handleSubmit}>
           {error && <div className="error-message">{error}</div>}
           
           <input
             type="email"
-            placeholder={translations.email}
+            placeholder="Correo Electrónico"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             required
@@ -55,12 +54,12 @@ export function ForgotPasswordForm({ onBack }) {
           />
           
           <button type="submit" disabled={loading}>
-            {loading ? translations.loading : translations.sendReset}
+            {loading ? 'Cargando...' : 'Enviar enlace de restablecimiento'}
           </button>
         </form>
         
         <button onClick={onBack} className="auth-link-button">
-          {translations.back}
+          Atrás
         </button>
       </div>
     </div>

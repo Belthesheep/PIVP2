@@ -1,6 +1,5 @@
 import { useCallback } from 'react';
 import { isVideo, getMediaUrl } from '../../utils/mediaUtils';
-import { translations } from '../../translations';
 
 export function PostDetail({
   post,
@@ -68,7 +67,7 @@ export function PostDetail({
 
           {/* Tags */}
           <div className="detail-section">
-            <h3>{translations.tags}</h3>
+            <h3>Etiquetas</h3>
             <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
               {(post.tags || []).map(t => <span key={t} className="tag">{t}</span>)}
             </div>
@@ -77,7 +76,7 @@ export function PostDetail({
           {/* Pools and Add to Pool */}
           <div className="detail-pools-row">
             <div className="pools-column">
-              <h3>{translations.pools}</h3>
+              <h3>Colecciones</h3>
               <div className="pool-links">
                 {poolsContainingPost.length === 0 ? (
                   <div>Esta publicación no está en ninguna colección</div>
@@ -136,7 +135,7 @@ export function PostDetail({
                     className="delete-btn"
                     onClick={handleDelete}
                   >
-                    {translations.delete}
+                    Eliminar
                   </button>
                 )}
                 {currentUser?.is_admin && currentUser?.id !== post.uploader_id && (
@@ -144,7 +143,7 @@ export function PostDetail({
                     className="delete-btn-admin"
                     onClick={handleAdminDelete}
                   >
-                    {translations.delete} (Admin)
+                    Eliminar (Admin)
                   </button>
                 )}
               </div>

@@ -1,6 +1,5 @@
 import { PostGrid } from '../components/Posts/PostGrid';
 import { Pagination } from '../components/Common/Pagination';
-import { translations } from '../translations';
 
 export function PostsView({
   posts,
@@ -21,7 +20,7 @@ export function PostsView({
   return (
     <div>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
-        <h2>{translations.posts}</h2>
+        <h2>Publicaciones</h2>
         {onToggleMostRelevant && (
           <div style={{ display: 'flex', gap: '0.5rem' }}>
             <button 
@@ -35,7 +34,7 @@ export function PostsView({
                 cursor: 'pointer'
               }}
             >
-              {translations.mostRelevant}
+              Más Relevantes
             </button>
             <button 
               onClick={() => onToggleMostRelevant(false)}
@@ -48,7 +47,7 @@ export function PostsView({
                 cursor: 'pointer'
               }}
             >
-              {translations.allPosts}
+              Todas las Publicaciones
             </button>
           </div>
         )}

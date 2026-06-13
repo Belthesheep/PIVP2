@@ -21,7 +21,7 @@ export function PoolsView({
   return (
     <div className="pools-view">
       <div className="pools-header">
-        <h2>Pools</h2>
+        <h2>Colecciones</h2>
         <CreatePoolForm onCreate={onCreatePool} />
       </div>
 

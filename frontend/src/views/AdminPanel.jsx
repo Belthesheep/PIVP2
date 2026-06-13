@@ -44,13 +44,13 @@ export function AdminPanel({ currentUser }) {
   };
 
   const handleDeleteUser = async (userId) => {
-    if (!confirm('Are you sure you want to delete this user and all their content?')) return;
+    if (!confirm('¿Estás seguro de que deseas eliminar este usuario y todo su contenido?')) return;
     
     try {
       await api.deleteUserAdmin(userId);
       setUsers(users.filter(u => u.id !== userId));
     } catch (err) {
-      alert(err.response?.data?.detail || 'Failed to delete user');
+      alert(err.response?.data?.detail || 'Error al eliminar usuario');
     }
   };
 
@@ -121,11 +121,11 @@ export function AdminPanel({ currentUser }) {
     }
   };
 
-  if (loading) return <div className="admin-panel"><p>Loading...</p></div>;
+  if (loading) return <div className="admin-panel"><p>Cargando...</p></div>;
 
   return (
     <div className="admin-panel">
-      <h1>Admin Panel</h1>
+      <h1>Panel de Administración</h1>
       
       {error && <p className="error-message">{error}</p>}
 
@@ -134,36 +134,36 @@ export function AdminPanel({ currentUser }) {
           className={selectedTab === 'users' ? 'active' : ''} 
           onClick={() => setSelectedTab('users')}
         >
-          Users
+          Usuarios
         </button>
         <button 
           className={selectedTab === 'activity' ? 'active' : ''}
           onClick={() => setSelectedTab('activity')}
         >
-          Moderation Activity
+          Registro de Actividad
         </button>
         <button 
           className={selectedTab === 'reports' ? 'active' : ''}
           onClick={() => setSelectedTab('reports')}
         >
-          Reports
+          Reportes
         </button>
       </div>
 
       {/* USERS TAB */}
       {selectedTab === 'users' && (
         <div className="admin-section">
-          <h2>User Management ({users.length})</h2>
+          <h2>Gestión de Usuarios ({users.length})</h2>
           <div className="users-table">
             <table>
               <thead>
                 <tr>
                   <th>ID</th>
-                  <th>Username</th>
-                  <th>Email</th>
-                  <th>Status</th>
-                  <th>Created</th>
-                  <th>Actions</th>
+                  <th>Usuario</th>
+                  <th>Correo</th>
+                  <th>Estado</th>
+                  <th>Creado</th>
+                  <th>Acciones</th>
                 </tr>
               </thead>
               <tbody>
@@ -174,10 +174,10 @@ export function AdminPanel({ currentUser }) {
                     <td>{user.email}</td>
                     <td>
                       <span className={user.is_admin ? 'badge-admin' : 'badge-user'}>
-                        {user.is_admin ? 'Admin' : 'User'}
+                        {user.is_admin ? 'Admin' : 'Usuario'}
                       </span>
                     </td>
-                    <td>{new Date(user.created_at).toLocaleDateString()}</td>
+                    <td>{new Date(user.created_at).toLocaleDateString('es-ES')}</td>
                     <td>
                       {user.id !== currentUser?.id && (
                         <>
@@ -185,18 +185,18 @@ export function AdminPanel({ currentUser }) {
                             onClick={() => handleToggleAdmin(user.id, user.is_admin)}
                             className="btn-toggle-admin"
                           >
-                            {user.is_admin ? 'Remove Admin' : 'Make Admin'}
+                            {user.is_admin ? 'Quitar Admin' : 'Hacer Admin'}
                           </button>
                           <button 
                             onClick={() => handleDeleteUser(user.id)}
                             className="btn-delete-user"
                           >
-                            Delete
+                            Eliminar
                           </button>
                         </>
                       )}
                       {user.id === currentUser?.id && (
-                        <span className="text-muted">(Your account)</span>
+                        <span className="text-muted">(Tu cuenta)</span>
                       )}
                     </td>
                   </tr>
@@ -210,7 +210,7 @@ export function AdminPanel({ currentUser }) {
       {/* ACTIVITY TAB */}
       {selectedTab === 'activity' && (
         <div className="admin-section">
-          <h2>Moderation Activity Log ({activityLogs.length})</h2>
+          <h2>Registro de Actividad ({activityLogs.length})</h2>
           <div className="activity-list">
             {activityLogs.length > 0 ? (
               activityLogs.map(log => (
@@ -218,18 +218,18 @@ export function AdminPanel({ currentUser }) {
                   <div className="activity-header">
                     <strong>{log.action_type}</strong>
                     <span className="activity-time">
-                      {new Date(log.timestamp).toLocaleString()}
+                      {new Date(log.timestamp).toLocaleString('es-ES')}
                     </span>
                   </div>
                   <div className="activity-details">
-                    <p>User ID: {log.user_id}</p>
-                    {log.post_id && <p>Post ID: {log.post_id}</p>}
-                    {log.pool_id && <p>Pool ID: {log.pool_id}</p>}
+                    <p>ID de Usuario: {log.user_id}</p>
+                    {log.post_id && <p>ID de Publicación: {log.post_id}</p>}
+                    {log.pool_id && <p>ID de Colección: {log.pool_id}</p>}
                   </div>
                 </div>
               ))
             ) : (
-              <p>No moderation activity yet</p>
+              <p>Sin actividad de moderación</p>
             )}
           </div>
         </div>
@@ -238,7 +238,7 @@ export function AdminPanel({ currentUser }) {
       {/* REPORTS TAB */}
       {selectedTab === 'reports' && (
         <div className="admin-section">
-          <h2>Platform Reports</h2>
+          <h2>Reportes de la Plataforma</h2>
           
           <div className="reports-selector">
             <div className="report-type-buttons">
@@ -246,31 +246,31 @@ export function AdminPanel({ currentUser }) {
                 className={reportType === 'summary' ? 'active' : ''}
                 onClick={() => loadReport('summary')}
               >
-                Summary
+                Resumen
               </button>
               <button 
                 className={reportType === 'posts' ? 'active' : ''}
                 onClick={() => loadReport('posts')}
               >
-                Posts
+                Publicaciones
               </button>
               <button 
                 className={reportType === 'pools' ? 'active' : ''}
                 onClick={() => loadReport('pools')}
               >
-                Pools
+                Colecciones
               </button>
               <button 
                 className={reportType === 'tags' ? 'active' : ''}
                 onClick={() => loadReport('tags')}
               >
-                Top Tags
+                Etiquetas Principales
               </button>
               <button 
                 className={reportType === 'uploaders' ? 'active' : ''}
                 onClick={() => loadReport('uploaders')}
               >
-                Top Uploaders
+                Usuarios Principales
               </button>
             </div>
 
@@ -300,7 +300,7 @@ export function AdminPanel({ currentUser }) {
             )}
           </div>
 
-          {reportLoading && <p>Loading report...</p>}
+          {reportLoading && <p>Cargando...</p>}
 
           {reportData && (
             <div className="report-data">
@@ -311,7 +311,7 @@ export function AdminPanel({ currentUser }) {
       )}
 
       <button onClick={loadAdminData} className="btn-refresh">
-        Refresh Data
+        Actualizar Datos
       </button>
     </div>
   );

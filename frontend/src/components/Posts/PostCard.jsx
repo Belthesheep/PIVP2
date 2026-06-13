@@ -34,14 +34,14 @@ export function PostCard({ post, currentUserId, isAdmin, onCardClick, onDelete, 
         />
       )}
       <div className="post-info">
-        <p className="post-desc">{post.description || 'No description'}</p>
+        <p className="post-desc">{post.description || 'Sin descripción'}</p>
         <div className="post-tags">
           {(post.tags || []).map(tag => (
             <span key={tag} className="tag">{tag}</span>
           ))}
         </div>
         <div className="post-meta">
-          <small>by {post.uploader_username}</small>
+          <small>por {post.uploader_username}</small>
           <div>
             <small style={{ marginRight: 8 }}>{post.favorite_count ?? 0} ★</small>
             {currentUserId === post.uploader_id && (
@@ -49,16 +49,16 @@ export function PostCard({ post, currentUserId, isAdmin, onCardClick, onDelete, 
                 className="delete-btn"
                 onClick={handleDelete}
               >
-                Delete
+                Eliminar
               </button>
             )}
             {isAdmin && currentUserId !== post.uploader_id && (
               <button
                 className="delete-btn-admin"
                 onClick={handleAdminDelete}
-                title="Delete as admin"
+                title="Eliminar (Admin)"
               >
-                Delete (Admin)
+                Eliminar (Admin)
               </button>
             )}
           </div>

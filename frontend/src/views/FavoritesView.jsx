@@ -16,16 +16,16 @@ export function FavoritesView({
   const totalPages = Math.ceil(favorites.length / postsPerPage);
 
   if (!currentUser) {
-    return <p>Please login to see your favorites</p>;
+    return <p>Por favor, inicia sesión para ver tus favoritos</p>;
   }
 
   if (favorites.length === 0) {
-    return <p>You haven't favorited any posts yet</p>;
+    return <p>Aún no has agregado publicaciones a favoritos</p>;
   }
 
   return (
     <div>
-      <h2 style={{ marginBottom: '1.5rem' }}>My Favorites</h2>
+      <h2 style={{ marginBottom: '1.5rem' }}>Mis Favoritos</h2>
       <PostGrid
         posts={paginatedFavorites}
         currentUserId={currentUser.id}

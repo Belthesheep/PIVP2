@@ -28,16 +28,16 @@ export function TagsBrowseView({ onTagSelect }) {
   };
 
   if (loading) {
-    return <div style={{ textAlign: 'center', padding: '2rem' }}>Loading tags...</div>;
+    return <div style={{ textAlign: 'center', padding: '2rem' }}>Cargando...</div>;
   }
 
   if (tags.length === 0) {
-    return <div style={{ textAlign: 'center', padding: '2rem' }}>No tags available yet</div>;
+    return <div style={{ textAlign: 'center', padding: '2rem' }}>No se encontraron etiquetas</div>;
   }
 
   return (
     <div style={{ padding: '1rem' }}>
-      <h1 style={{ marginBottom: '1.5rem' }}>Browse Tags</h1>
+      <h1 style={{ marginBottom: '1.5rem' }}>Explorar Etiquetas</h1>
       <div style={{
         display: 'grid',
         gridTemplateColumns: 'repeat(auto-fill, minmax(150px, 1fr))',
