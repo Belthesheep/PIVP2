@@ -30,7 +30,12 @@ export function ResetPasswordForm({ onBack }) {
         await api.validateResetToken(resetToken);
         setValid(true);
       } catch (err) {
-        setError(err.response?.data?.detail || 'Token de restablecimiento inválido o expirado');
+        let errorMsg = 'Token de restablecimiento inválido o expirado';
+        if (err.response?.data?.detail) {
+          const detail = err.response.data.detail;
+          errorMsg = Array.isArray(detail) ? detail[0]?.msg || errorMsg : detail;
+        }
+        setError(errorMsg);
       } finally {
         setValidating(false);
       }
@@ -68,7 +73,12 @@ export function ResetPasswordForm({ onBack }) {
         }
       }, 3000);
     } catch (err) {
-      setError(err.response?.data?.detail || 'No se pudo restablecer la contraseña');
+      let errorMsg = 'No se pudo restablecer la contraseña';
+      if (err.response?.data?.detail) {
+        const detail = err.response.data.detail;
+        errorMsg = Array.isArray(detail) ? detail[0]?.msg || errorMsg : detail;
+      }
+      setError(errorMsg);
     } finally {
       setLoading(false);
     }

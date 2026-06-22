@@ -62,6 +62,9 @@ class PasswordReset(BaseModel):
     token: str = Field(..., min_length=1)
     new_password: str = Field(..., min_length=6)
 
+class TokenValidation(BaseModel):
+    token: str = Field(..., min_length=1)
+
 class User(BaseModel):
     id: int
     username: str
@@ -261,10 +264,10 @@ async def request_password_reset(request: PasswordResetRequest):
     return {"message": "Si el correo está registrado, recibirás un enlace para restablecer tu contraseña"}
 
 @app.post("/api/auth/validate-reset-token")
-async def validate_reset_token_endpoint(token: str):
+async def validate_reset_token_endpoint(validation: TokenValidation):
     """Validar token JWT para reseteo de contraseña"""
     try:
-        payload = validate_reset_token(token)
+        payload = validate_reset_token(validation.token)
         return {"valid": True, "user_id": payload["user_id"], "email": payload["email"]}
     except jwt.InvalidTokenError as e:
         raise HTTPException(status_code=400, detail=f"Token inválido: {str(e)}")
