@@ -60,6 +60,13 @@ function App() {
       await auth.loadCurrentUser();
       // Load all data
       await loadAllData();
+      
+      // Check for password reset token in URL
+      const params = new URLSearchParams(window.location.search);
+      const resetToken = params.get('token');
+      if (resetToken) {
+        setView('resetPassword');
+      }
     };
     initializeApp();
   }, []);

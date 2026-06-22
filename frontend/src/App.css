@@ -782,12 +782,12 @@ main {
 }
 
 .pool-actions button:first-child {
-  background: #ac6ec5;
+  background: #ffc266;
   color: #222;
 }
 
 .pool-actions button:first-child:hover {
-  background: #ff0000;
+  background: #1e6ed8;
   color: #fff;
 }
 

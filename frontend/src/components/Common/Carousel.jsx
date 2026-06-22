@@ -35,7 +35,7 @@ export function Carousel({ items, currentIndex, isOpen, onPrev, onNext, onClose 
             )}
             <div className="carousel-info" style={{ marginTop: 8 }}>
               <p>{currentItem.description}</p>
-              <small>by {currentItem.uploader_username}</small>
+              <small>por {currentItem.uploader_username}</small>
             </div>
           </>
         )}

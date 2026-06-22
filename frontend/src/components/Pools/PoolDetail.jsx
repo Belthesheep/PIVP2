@@ -7,11 +7,11 @@ export function PoolDetail({ pool, currentUser, onOpenCarousel, onOpenPost, onDe
         <div>
           <h2>{pool.name}</h2>
           <p>{pool.description}</p>
-          <small>by {pool.creator_username || pool.creator_id}</small>
+          <small>por {pool.creator_username || pool.creator_id}</small>
         </div>
         <div className="pool-actions">
           <button onClick={() => onOpenCarousel(pool.posts || [], 0)} disabled={poolPostCount(pool) === 0}>
-            Open Carousel
+            Abrir Carrusel
           </button>
         </div>
       </div>
