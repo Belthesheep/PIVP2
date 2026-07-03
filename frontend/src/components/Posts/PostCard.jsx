@@ -17,8 +17,10 @@ export function PostCard({ post, currentUserId, isAdmin, onCardClick, onDelete, 
   const mediaIsVideo = isVideo(post.image_filename);
   const mediaUrl = getMediaUrl(post.image_filename);
 
+  const isDeleted = Boolean(post.deleted_at);
+
   return (
-    <div className="post-card" onClick={() => onCardClick(post.id)}>
+    <div className={`post-card ${isAdmin && isDeleted ? 'deleted-admin-card' : ''}`} onClick={() => onCardClick(post.id)}>
       {mediaIsVideo ? (
         <img
           src="/vidplaceholder.png"
@@ -34,6 +36,9 @@ export function PostCard({ post, currentUserId, isAdmin, onCardClick, onDelete, 
         />
       )}
       <div className="post-info">
+        {isAdmin && isDeleted && (
+          <div className="deleted-badge">Eliminada</div>
+        )}
         <p className="post-desc">{post.description || 'Sin descripción'}</p>
         <div className="post-tags">
           {(post.tags || []).map(tag => (

@@ -14,8 +14,11 @@ export function PoolCard({ pool, poolPostCount, currentUserId, isAdmin, onCardCl
     }
   }, [pool.id, onAdminDelete]);
 
+  const isDeleted = Boolean(pool.deleted_at);
+
   return (
-    <div key={pool.id} className="pool-card" onClick={() => onCardClick(pool.id)}>
+    <div key={pool.id} className={`pool-card ${isAdmin && isDeleted ? 'deleted-admin-card' : ''}`} onClick={() => onCardClick(pool.id)}>
+      {isAdmin && isDeleted && <div className="deleted-badge">Eliminada</div>}
       <h3>{pool.name}</h3>
       <p>{pool.description}</p>
       <div className="pool-meta">
@@ -25,7 +28,7 @@ export function PoolCard({ pool, poolPostCount, currentUserId, isAdmin, onCardCl
       <div className="pool-actions">
         {currentUserId === pool.creator_id && onDelete && (
           <button
-            className="delete-btn"
+            className="pool-card-delete-btn"
             onClick={handleDelete}
           >
             {translations.delete}
@@ -33,7 +36,7 @@ export function PoolCard({ pool, poolPostCount, currentUserId, isAdmin, onCardCl
         )}
         {isAdmin && currentUserId !== pool.creator_id && onAdminDelete && (
           <button
-            className="delete-btn-admin"
+            className="pool-card-delete-btn-admin"
             onClick={handleAdminDelete}
             title={`${translations.delete} (Admin)`}
           >

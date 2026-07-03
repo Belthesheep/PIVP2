@@ -163,7 +163,7 @@ def generate_pdf_report(report_type: str = "summary") -> bytes:
     Generate a PDF report.
     
     Args:
-        report_type: 'summary', 'posts', 'pools', or 'tags'
+        report_type: 'summary', 'posts', 'pools', 'tags', or 'uploaders'
     
     Returns:
         PDF bytes
@@ -197,20 +197,20 @@ def generate_pdf_report(report_type: str = "summary") -> bytes:
         )
         
         # Title
-        elements.append(Paragraph("SheepBooru Analytics Report", title_style))
-        elements.append(Paragraph(f"Generated: {datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')}", styles['Normal']))
+        elements.append(Paragraph("Reporte Analitico de SheepBooru", title_style))
+        elements.append(Paragraph(f"Generado: {datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')}", styles['Normal']))
         elements.append(Spacer(1, 0.3 * inch))
         
         if report_type == "summary":
             report = get_summary_report()
             
             # Summary statistics
-            elements.append(Paragraph("Summary Statistics", heading_style))
+            elements.append(Paragraph("Estadisticas Generales", heading_style))
             summary_data = [
-                ["Metric", "Value"],
-                ["Total Posts", str(report["total_posts"])],
-                ["Total Users", str(report["total_users"])],
-                ["Storage Used (MB)", str(report["storage_used_mb"])],
+                ["Metrica", "Valor"],
+                ["Total Publicaciones", str(report["total_posts"])],
+                ["Total Usuarios", str(report["total_users"])],
+                ["Almacenamiento Usado (MB)", str(report["storage_used_mb"])],
             ]
             summary_table = Table(summary_data, colWidths=[3*inch, 2*inch])
             summary_table.setStyle(TableStyle([
@@ -227,12 +227,12 @@ def generate_pdf_report(report_type: str = "summary") -> bytes:
             elements.append(Spacer(1, 0.2 * inch))
             
             # Activity stats
-            elements.append(Paragraph("Activity - Today", heading_style))
+            elements.append(Paragraph("Actividad - Hoy", heading_style))
             activity_data = [
-                ["Action Type", "Count"],
-                ["Uploads", str(report["activity_today"]["upload_count"])],
-                ["Downloads", str(report["activity_today"]["download_count"])],
-                ["Deletes", str(report["activity_today"]["delete_count"])],
+                ["Tipo de Accion", "Cantidad"],
+                ["Subidas", str(report["activity_today"]["upload_count"])],
+                ["Descargas", str(report["activity_today"]["download_count"])],
+                ["Eliminaciones", str(report["activity_today"]["delete_count"])],
             ]
             activity_table = Table(activity_data, colWidths=[3*inch, 2*inch])
             activity_table.setStyle(TableStyle([
@@ -250,12 +250,12 @@ def generate_pdf_report(report_type: str = "summary") -> bytes:
         elif report_type == "posts":
             report = get_post_statistics()
             
-            elements.append(Paragraph("Post Statistics", heading_style))
+            elements.append(Paragraph("Estadisticas de Publicaciones", heading_style))
             posts_data = [
-                ["Metric", "Value"],
-                ["Total Posts", str(report["total_posts"])],
-                ["Untagged Posts", str(report["untagged_posts"])],
-                ["Average Favorites", str(report["average_favorites"])],
+                ["Metrica", "Valor"],
+                ["Total Publicaciones", str(report["total_posts"])],
+                ["Publicaciones Sin Etiquetas", str(report["untagged_posts"])],
+                ["Promedio de Favoritos", str(report["average_favorites"])],
             ]
             posts_table = Table(posts_data, colWidths=[3*inch, 2*inch])
             posts_table.setStyle(TableStyle([
@@ -270,11 +270,51 @@ def generate_pdf_report(report_type: str = "summary") -> bytes:
             ]))
             elements.append(posts_table)
         
+        elif report_type == "pools":
+            report = get_pool_statistics()
+
+            elements.append(Paragraph("Estadisticas de Colecciones", heading_style))
+            pools_data = [
+                ["Metrica", "Valor"],
+                ["Total Colecciones", str(report["total_pools"])],
+            ]
+            pools_table = Table(pools_data, colWidths=[3*inch, 2*inch])
+            pools_table.setStyle(TableStyle([
+                ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#1e6ed8')),
+                ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
+                ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
+                ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+                ('FONTSIZE', (0, 0), (-1, 0), 12),
+                ('BOTTOMPADDING', (0, 0), (-1, 0), 12),
+                ('BACKGROUND', (0, 1), (-1, -1), colors.beige),
+                ('GRID', (0, 0), (-1, -1), 1, colors.black)
+            ]))
+            elements.append(pools_table)
+
+            elements.append(Spacer(1, 0.2 * inch))
+            elements.append(Paragraph("Creadores Principales", heading_style))
+            creators_data = [["Usuario", "Cantidad de Colecciones"]]
+            for creator in report["top_creators"]:
+                creators_data.append([creator["username"], str(creator["pool_count"])])
+
+            creators_table = Table(creators_data, colWidths=[3*inch, 2*inch])
+            creators_table.setStyle(TableStyle([
+                ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#1e6ed8')),
+                ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
+                ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
+                ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+                ('FONTSIZE', (0, 0), (-1, 0), 12),
+                ('BOTTOMPADDING', (0, 0), (-1, 0), 12),
+                ('BACKGROUND', (0, 1), (-1, -1), colors.beige),
+                ('GRID', (0, 0), (-1, -1), 1, colors.black)
+            ]))
+            elements.append(creators_table)
+
         elif report_type == "tags":
             report = get_tag_statistics(20)
             
-            elements.append(Paragraph("Tag Statistics", heading_style))
-            tags_data = [["Tag Name", "Post Count"]]
+            elements.append(Paragraph("Estadisticas de Etiquetas", heading_style))
+            tags_data = [["Nombre de Etiqueta", "Cantidad de Publicaciones"]]
             for tag in report["most_used_tags"]:
                 tags_data.append([tag["tag_name"], str(tag["post_count"])])
             
@@ -290,6 +330,27 @@ def generate_pdf_report(report_type: str = "summary") -> bytes:
                 ('GRID', (0, 0), (-1, -1), 1, colors.black)
             ]))
             elements.append(tags_table)
+
+        elif report_type == "uploaders":
+            report = {"top_uploaders": get_top_uploaders()}
+
+            elements.append(Paragraph("Usuarios Principales", heading_style))
+            uploaders_data = [["Usuario", "Cantidad de Publicaciones"]]
+            for uploader in report["top_uploaders"]:
+                uploaders_data.append([uploader["username"], str(uploader["post_count"])])
+
+            uploaders_table = Table(uploaders_data, colWidths=[3*inch, 2*inch])
+            uploaders_table.setStyle(TableStyle([
+                ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#1e6ed8')),
+                ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
+                ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
+                ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+                ('FONTSIZE', (0, 0), (-1, 0), 12),
+                ('BOTTOMPADDING', (0, 0), (-1, 0), 12),
+                ('BACKGROUND', (0, 1), (-1, -1), colors.beige),
+                ('GRID', (0, 0), (-1, -1), 1, colors.black)
+            ]))
+            elements.append(uploaders_table)
         
         # Build PDF
         doc.build(elements)

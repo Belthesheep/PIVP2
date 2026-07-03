@@ -165,6 +165,25 @@ main {
   box-shadow: 0 4px 8px rgba(0,0,0,0.15);
 }
 
+.post-card.deleted-admin-card {
+  background: #ff6c6c;
+  border-color: #e63946;
+}
+
+.post-card.deleted-admin-card .post-info {
+  background: rgba(230, 57, 70, 0.05);
+}
+
+.deleted-badge {
+  display: inline-block;
+  background: #ff0000;
+  color: #fff;
+  padding: 0.25rem 0.6rem;
+  border-radius: 999px;
+  font-size: 0.75rem;
+  font-weight: 700;
+}
+
 .post-card img {
   width: 100%;
   height: 250px;
@@ -438,6 +457,24 @@ main {
   font-size: 0.95rem;
 }
 
+.detail-top-meta {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+  margin-bottom: 0.5rem;
+}
+
+.detail-created-at {
+  display: inline-block;
+  background: #ffe4b5;
+  color: #6f4426;
+  padding: 0.25rem 0.6rem;
+  border-radius: 999px;
+  font-size: 0.8rem;
+  font-weight: 700;
+}
+
 .detail-section {
   margin: 0.75rem 0;
   padding: 0.75rem 0;
@@ -532,7 +569,8 @@ main {
   color: #000;
 }
 
-.delete-btn-admin {
+.delete-btn-admin,
+.pool-card-delete-btn-admin {
   padding: 0.5rem 1rem;
   background: #ac6ec5;
   color: white;
@@ -542,9 +580,25 @@ main {
   font-size: 0.9rem;
 }
 
-.delete-btn-admin:hover {
+.delete-btn-admin:hover,
+.pool-card-delete-btn-admin:hover {
+  background: #8b4fa7;
+  color: #fff;
+}
+
+.pool-card-delete-btn {
+  padding: 0.5rem 1rem;
+  background: #f44336;
+  color: white;
+  border: 2px rgba(0,0,0,1);
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 0.9rem;
+}
+
+.pool-card-delete-btn:hover {
   background: #ff0000;
-  color: #000;
+  color: #fff;
 }
 
 .pool-links {
@@ -709,6 +763,7 @@ main {
 }
 
 .pool-card {
+  position: relative;
   background: #ffd690;
   padding: 1.25rem;
   border-radius: 10px;
@@ -716,6 +771,16 @@ main {
   cursor: pointer;
   transition: transform 0.12s, box-shadow 0.12s;
   border: 2px rgba(0,0,0,1);
+}
+
+.pool-card.deleted-admin-card {
+  background: #ff6c6c;
+  border-color: #e63946;
+}
+
+.pool-card.deleted-admin-card h3,
+.pool-card.deleted-admin-card p {
+  color: #991f1f;
 }
 
 .pool-card:hover {
@@ -731,6 +796,13 @@ main {
 .pool-card p {
   color: #666;
   margin-bottom: 1rem;
+}
+
+.pool-card .deleted-badge {
+  position: absolute;
+  right: 0.75rem;
+  bottom: 0.75rem;
+  margin: 0;
 }
 
 .pool-meta {
@@ -771,7 +843,7 @@ main {
   gap: 0.5rem;
 }
 
-.pool-actions button {
+.pool-detail .pool-actions button {
   padding: 0.5rem;
   margin-left: 0%;
   margin-top: 0.2rem;
@@ -779,16 +851,30 @@ main {
   border-radius: 4px;
   cursor: pointer;
   white-space: nowrap;
+  background: #ffc266;
+  color: #222;
+  
 }
 
-.pool-actions button:first-child {
-  background: #ffc266;
+.pool-detail .pool-actions button:hover {
+  background: #1e6ed8;
+  color: #fff;
+}
+
+.pool-detail .pool-carousel-btn {
+  background: #ffd690;
   color: #222;
 }
 
-.pool-actions button:first-child:hover {
+.pool-detail .pool-carousel-btn:hover:not(:disabled) {
   background: #1e6ed8;
   color: #fff;
+}
+
+.pool-detail .pool-carousel-btn:disabled {
+  background: #ccc;
+  color: #666;
+  cursor: not-allowed;
 }
 
 /* CAROUSEL */
@@ -813,8 +899,8 @@ main {
 }
 
 .carousel-btn:hover:not(:disabled) {
-  background: #e53935;
-  color: #000;
+  background: #1e6ed8;
+  color: #fff;
 }
 
 .carousel-btn:disabled {
@@ -1068,6 +1154,111 @@ main {
   color: #333;
 }
 
+.moderation-tabs {
+  display: flex;
+  gap: 0.6rem;
+  flex-wrap: wrap;
+  margin-bottom: 1.25rem;
+}
+
+.moderation-tabs button {
+  padding: 0.55rem 0.95rem;
+  background: #fff;
+  color: #333;
+  border-radius: 8px;
+  cursor: pointer;
+  font-weight: 700;
+  transition: all 0.2s;
+}
+
+.moderation-tabs button:hover {
+  border-color: #1e6ed8;
+}
+
+.moderation-tabs button.active {
+  background: #1e6ed8;
+  color: #fff;
+}
+
+.moderation-subsection h3 {
+  margin-bottom: 1rem;
+}
+
+.deleted-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 0.9rem;
+}
+
+.deleted-users-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.deleted-card {
+  background: #fff;
+  border: 1px solid #e8c999;
+  border-left: 4px solid #e63946;
+  border-radius: 8px;
+  padding: 0.85rem;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+.deleted-card .item-info p {
+  margin: 0.2rem 0;
+  font-size: 0.88rem;
+  color: #3f2a12;
+}
+
+.deleted-user-card {
+  flex-direction: row;
+  align-items: center;
+}
+
+.deleted-user-card .item-info {
+  flex: 1;
+}
+
+.deleted-card-actions {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.btn-view {
+  align-self: flex-start;
+  padding: 0.45rem 0.8rem;
+  background: #1e6ed8;
+  color: #fff;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  font-weight: 700;
+}
+
+.btn-view:hover {
+  background: #0d47a1;
+}
+
+.btn-restore {
+  align-self: flex-start;
+  padding: 0.45rem 0.8rem;
+  background: #2f9e44;
+  color: #fff;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  font-weight: 700;
+}
+
+.btn-restore:hover {
+  background: #237637;
+}
+
 /* USERS TABLE */
 .users-table {
   overflow-x: auto;
@@ -1280,6 +1471,57 @@ main {
   font-family: 'Courier New', monospace;
   color: #333;
   margin: 0;
+}
+
+.report-table-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.report-table-block {
+  background: #fffdf8;
+  border: 1px solid #e8c999;
+  border-radius: 8px;
+  padding: 0.9rem;
+}
+
+.report-table-block h3 {
+  margin: 0 0 0.7rem 0;
+  color: #333;
+}
+
+.report-table {
+  width: 100%;
+  border-collapse: collapse;
+  background: #fff;
+}
+
+.report-table th,
+.report-table td {
+  border: 1px solid #ecd6b2;
+  padding: 0.55rem;
+  text-align: left;
+  font-size: 0.9rem;
+}
+
+.report-table th {
+  background: #fff2db;
+  color: #333;
+  font-weight: 700;
+}
+
+.report-table th.sortable-th {
+  cursor: pointer;
+  user-select: none;
+}
+
+.report-table th.sortable-th:hover {
+  background: #ffe6bb;
+}
+
+.report-table tbody tr:nth-child(even) {
+  background: #fffaf0;
 }
 
 @media (max-width: 768px) {

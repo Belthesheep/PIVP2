@@ -454,7 +454,11 @@ function App() {
 
             {/* ADMIN PANEL VIEW */}
             {view === 'admin' && auth.currentUser?.is_admin && (
-              <AdminPanel currentUser={auth.currentUser} />
+              <AdminPanel
+                currentUser={auth.currentUser}
+                onViewPost={openPost}
+                onViewPool={openPoolDetail}
+              />
             )}
 
             {/* TAGS BROWSE VIEW */}

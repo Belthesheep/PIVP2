@@ -37,6 +37,10 @@ export function PostDetail({
   const matchingPools = userPools.filter(p => p.name.toLowerCase().includes(poolSearch.toLowerCase()));
   const mediaIsVideo = isVideo(post.image_filename);
   const mediaUrl = getMediaUrl(post.image_filename);
+  const createdAtText = post.upload_date
+    ? new Date(post.upload_date).toLocaleString('es-ES')
+    : 'Fecha no disponible';
+  const isDeletedForAdmin = currentUser?.is_admin && Boolean(post.deleted_at);
 
   return (
     <div className="post-detail">
@@ -54,6 +58,11 @@ export function PostDetail({
           )}
         </div>
         <div className="detail-info">
+          <div className="detail-top-meta">
+            {isDeletedForAdmin && <span className="deleted-badge">Eliminada</span>}
+            <span className="detail-created-at">Publicada: {createdAtText}</span>
+          </div>
+
           {/* Description + Favorite Button */}
           <div className="detail-header">
             <h2>{post.description || 'Sin descripción'}</h2>

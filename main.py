@@ -386,51 +386,59 @@ async def create_post(
     return {"id": post_id, "message": "Post created successfully", "tags": tag_list}
 
 @app.get("/api/posts")
-async def list_posts(tag: Optional[str] = None, user_id: Optional[int] = None, most_relevant: bool = True):
+async def list_posts(
+    tag: Optional[str] = None,
+    user_id: Optional[int] = None,
+    most_relevant: bool = True,
+    current_user = Depends(get_current_user)
+):
     """Listar posts, opcionalmente filtrados por etiqueta, usuario o relevancia"""
     conn = get_db()
     cursor = conn.cursor()
+    include_deleted = current_user and current_user.get("is_admin")
+    deleted_clause = "" if include_deleted else " AND p.deleted_at IS NULL"
     
     if tag:
         # Filtrar por etiqueta
-        query = """
+        query = f"""
             SELECT DISTINCT p.id, p.image_filename, p.uploader_id, u.username as uploader_username,
-                   p.upload_date, p.description, p.favorite_count
+                   p.upload_date, p.description, p.favorite_count, p.deleted_at
             FROM posts p
             JOIN users u ON p.uploader_id = u.id
             JOIN post_tags pt ON p.id = pt.post_id
             JOIN tags t ON pt.tag_id = t.id
-            WHERE t.tag_name = ?
+            WHERE t.tag_name = ?{deleted_clause}
             ORDER BY p.upload_date DESC
         """
         cursor.execute(query, (tag.lower(),))
     elif user_id:
-        query = """
+        query = f"""
             SELECT p.id, p.image_filename, p.uploader_id, u.username as uploader_username,
-                   p.upload_date, p.description, p.favorite_count
+                   p.upload_date, p.description, p.favorite_count, p.deleted_at
             FROM posts p
             JOIN users u ON p.uploader_id = u.id
-            WHERE p.uploader_id = ?
+            WHERE p.uploader_id = ?{deleted_clause}
             ORDER BY p.upload_date DESC
         """
         cursor.execute(query, (user_id,))
     else:
         # Aplicar filtro de "más relevante" (últimos 7 días, ordenados por favoritos)
         if most_relevant:
-            query = """
+            query = f"""
                 SELECT p.id, p.image_filename, p.uploader_id, u.username as uploader_username,
-                       p.upload_date, p.description, p.favorite_count
+                       p.upload_date, p.description, p.favorite_count, p.deleted_at
                 FROM posts p
                 JOIN users u ON p.uploader_id = u.id
-                WHERE p.upload_date >= datetime('now', '-7 days')
+                WHERE p.upload_date >= datetime('now', '-7 days'){deleted_clause}
                 ORDER BY p.favorite_count DESC, p.upload_date DESC
             """
         else:
-            query = """
+            query = f"""
                 SELECT p.id, p.image_filename, p.uploader_id, u.username as uploader_username,
-                       p.upload_date, p.description, p.favorite_count
+                       p.upload_date, p.description, p.favorite_count, p.deleted_at
                 FROM posts p
                 JOIN users u ON p.uploader_id = u.id
+                WHERE 1=1{deleted_clause}
                 ORDER BY p.upload_date DESC
             """
         cursor.execute(query)
@@ -462,12 +470,14 @@ async def get_post(post_id: int, current_user = Depends(get_current_user)):
     conn = get_db()
     cursor = conn.cursor()
     
-    cursor.execute("""
+    include_deleted = current_user and current_user.get("is_admin")
+    deleted_clause = "" if include_deleted else " AND p.deleted_at IS NULL"
+    cursor.execute(f"""
         SELECT p.id, p.image_filename, p.uploader_id, u.username as uploader_username,
-               p.upload_date, p.description, p.favorite_count
+               p.upload_date, p.description, p.favorite_count, p.deleted_at
         FROM posts p
         JOIN users u ON p.uploader_id = u.id
-        WHERE p.id = ?
+        WHERE p.id = ?{deleted_clause}
     """, (post_id,))
     
     post = cursor.fetchone()
@@ -489,7 +499,7 @@ async def get_post(post_id: int, current_user = Depends(get_current_user)):
         SELECT p.id, p.name
         FROM pools p
         JOIN pool_posts pp ON p.id = pp.pool_id
-        WHERE pp.post_id = ?
+        WHERE pp.post_id = ? AND p.deleted_at IS NULL
     """, (post_id,))
     pools = [dict(row) for row in cursor.fetchall()]
     
@@ -617,7 +627,7 @@ async def get_user_favorites(user_id: int):
         FROM posts p
         JOIN users u ON p.uploader_id = u.id
         JOIN favorites f ON p.id = f.post_id
-        WHERE f.user_id = ?
+        WHERE f.user_id = ? AND p.deleted_at IS NULL
         ORDER BY f.favorited_at DESC
     """, (user_id,))
     
@@ -662,15 +672,18 @@ async def create_pool(pool: PoolCreate, user = Depends(require_auth)):
     return {"id": pool_id, "name": pool.name, "message": "Pool created successfully"}
 
 @app.get("/api/pools")
-async def list_pools():
+async def list_pools(current_user = Depends(get_current_user)):
     """List all pools"""
+    include_deleted = current_user and current_user.get("is_admin")
+    deleted_clause = "" if include_deleted else "WHERE p.deleted_at IS NULL"
     conn = get_db()
     cursor = conn.cursor()
-    cursor.execute("""
+    cursor.execute(f"""
         SELECT p.id, p.name, p.description, p.creator_id, u.username as creator_username,
-               p.created_at
+               p.created_at, p.deleted_at
         FROM pools p
         JOIN users u ON p.creator_id = u.id
+        {deleted_clause}
         ORDER BY p.created_at DESC
     """)
 
@@ -688,17 +701,19 @@ async def list_pools():
     return result
 
 @app.get("/api/pools/{pool_id}")
-async def get_pool(pool_id: int):
+async def get_pool(pool_id: int, current_user = Depends(get_current_user)):
     """Get a specific pool with its posts in order"""
+    include_deleted = current_user and current_user.get("is_admin")
+    deleted_clause = "" if include_deleted else " AND p.deleted_at IS NULL"
     conn = get_db()
     cursor = conn.cursor()
     
-    cursor.execute("""
+    cursor.execute(f"""
         SELECT p.id, p.name, p.description, p.creator_id, u.username as creator_username,
-               p.created_at
+               p.created_at, p.deleted_at
         FROM pools p
         JOIN users u ON p.creator_id = u.id
-        WHERE p.id = ?
+        WHERE p.id = ?{deleted_clause}
     """, (pool_id,))
     
     pool = cursor.fetchone()
@@ -707,13 +722,15 @@ async def get_pool(pool_id: int):
         raise HTTPException(status_code=404, detail="Pool not found")
     
     # Get posts in order
-    cursor.execute("""
+    include_deleted_posts = current_user and current_user.get("is_admin")
+    deleted_post_clause = "" if include_deleted_posts else " AND p.deleted_at IS NULL"
+    cursor.execute(f"""
         SELECT p.id, p.image_filename, p.uploader_id, u.username as uploader_username,
-               p.upload_date, p.description, p.favorite_count, pp.order_index
+               p.upload_date, p.description, p.favorite_count, p.deleted_at, pp.order_index
         FROM posts p
         JOIN users u ON p.uploader_id = u.id
         JOIN pool_posts pp ON p.id = pp.post_id
-        WHERE pp.pool_id = ?
+        WHERE pp.pool_id = ?{deleted_post_clause}
         ORDER BY pp.order_index
     """, (pool_id,))
     
@@ -1026,8 +1043,8 @@ async def export_report_pdf(report_type: str = "summary", user = Depends(require
     if not user.get("is_admin"):
         raise HTTPException(status_code=403, detail="Only admins can export reports")
     
-    if report_type not in ["summary", "posts", "pools", "tags"]:
-        raise HTTPException(status_code=400, detail="Invalid report type. PDF supports: summary, posts, pools, tags")
+    if report_type not in ["summary", "posts", "pools", "tags", "uploaders"]:
+        raise HTTPException(status_code=400, detail="Invalid report type. PDF supports: summary, posts, pools, tags, uploaders")
     
     try:
         pdf_content = generate_pdf_report(report_type)
@@ -1187,7 +1204,7 @@ async def update_user_role(user_id: int, is_admin: bool = Body(..., embed=True),
 
 @app.delete("/api/admin/posts/{post_id}")
 async def delete_post_admin(post_id: int, user = Depends(require_auth)):
-    """Delete any post (admin only)"""
+    """Delete any post (admin only) - uses soft delete"""
     if not user.get("is_admin"):
         raise HTTPException(status_code=403, detail="Only admins can delete posts")
     
@@ -1195,41 +1212,25 @@ async def delete_post_admin(post_id: int, user = Depends(require_auth)):
     cursor = conn.cursor()
     
     # Get post details before deletion
-    cursor.execute("SELECT uploader_id, image_filename FROM posts WHERE id = ?", (post_id,))
+    cursor.execute("SELECT id FROM posts WHERE id = ? AND deleted_at IS NULL", (post_id,))
     post = cursor.fetchone()
     
     if not post:
         conn.close()
         raise HTTPException(status_code=404, detail="Post not found")
     
-    # Log activity BEFORE deletion (to avoid foreign key constraint)
+    # Log activity BEFORE deletion
     log_activity(user.get("id"), "post_moderation_delete", post_id, None)
     
-    # Delete related favorites
-    cursor.execute("DELETE FROM favorites WHERE post_id = ?", (post_id,))
-    
-    # Delete post_tags
-    cursor.execute("DELETE FROM post_tags WHERE post_id = ?", (post_id,))
-    
-    # Delete pool_posts
-    cursor.execute("DELETE FROM pool_posts WHERE post_id = ?", (post_id,))
-    
-    # Delete post
-    cursor.execute("DELETE FROM posts WHERE id = ?", (post_id,))
+    # Soft delete: mark as deleted instead of removing
+    from datetime import datetime
+    deleted_at = datetime.now().isoformat()
+    cursor.execute("UPDATE posts SET deleted_at = ? WHERE id = ?", (deleted_at, post_id))
     
     conn.commit()
     conn.close()
     
-    # Clean up image file
-    try:
-        if post[1]:
-            image_path = os.path.join("uploads", post[1])
-            if os.path.exists(image_path):
-                os.remove(image_path)
-    except Exception as e:
-        print(f"Error deleting image file: {e}")
-    
-    return {"message": "Post deleted by admin"}
+    return {"message": "Publicación eliminada por admin"}
 
 @app.delete("/api/admin/posts/{post_id}/user/{original_user_id}")
 async def delete_post_user_posts(post_id: int, original_user_id: int, user = Depends(require_auth)):
@@ -1271,30 +1272,37 @@ async def delete_post_user_posts(post_id: int, original_user_id: int, user = Dep
 
 @app.delete("/api/admin/pools/{pool_id}")
 async def delete_pool_admin(pool_id: int, user = Depends(require_auth)):
-    """Delete any pool (admin only)"""
+    """Delete any pool (admin only) - uses soft delete"""
     if not user.get("is_admin"):
         raise HTTPException(status_code=403, detail="Only admins can delete pools")
     
     conn = get_db()
     cursor = conn.cursor()
     
-    # Log activity BEFORE deletion (to avoid foreign key constraint)
+    # Check if pool exists
+    cursor.execute("SELECT id FROM pools WHERE id = ? AND deleted_at IS NULL", (pool_id,))
+    pool = cursor.fetchone()
+    
+    if not pool:
+        conn.close()
+        raise HTTPException(status_code=404, detail="Pool not found")
+    
+    # Log activity BEFORE deletion
     log_activity(user.get("id"), "pool_moderation_delete", None, pool_id)
     
-    # Delete pool_posts
-    cursor.execute("DELETE FROM pool_posts WHERE pool_id = ?", (pool_id,))
-    
-    # Delete pool
-    cursor.execute("DELETE FROM pools WHERE id = ?", (pool_id,))
+    # Soft delete: mark as deleted
+    from datetime import datetime
+    deleted_at = datetime.now().isoformat()
+    cursor.execute("UPDATE pools SET deleted_at = ? WHERE id = ?", (deleted_at, pool_id))
     
     conn.commit()
     conn.close()
     
-    return {"message": "Pool deleted by admin"}
+    return {"message": "Colección eliminada por admin"}
 
 @app.delete("/api/admin/users/{user_id}")
 async def delete_user_admin(user_id: int, admin_user = Depends(require_auth)):
-    """Delete user account (admin only)"""
+    """Delete user account (admin only) - uses soft delete"""
     if not admin_user.get("is_admin"):
         raise HTTPException(status_code=403, detail="Only admins can delete users")
     
@@ -1305,41 +1313,191 @@ async def delete_user_admin(user_id: int, admin_user = Depends(require_auth)):
         conn = get_db()
         cursor = conn.cursor()
         
-        # Get all posts by this user
-        cursor.execute("SELECT id, image_filename FROM posts WHERE uploader_id = ?", (user_id,))
-        posts = cursor.fetchall()
+        # Check if user exists
+        cursor.execute("SELECT id FROM users WHERE id = ? AND deleted_at IS NULL", (user_id,))
+        user = cursor.fetchone()
         
-        # Delete all user's posts
-        for post_id, image_filename in posts:
-            cursor.execute("DELETE FROM favorites WHERE post_id = ?", (post_id,))
-            cursor.execute("DELETE FROM post_tags WHERE post_id = ?", (post_id,))
-            cursor.execute("DELETE FROM pool_posts WHERE post_id = ?", (post_id,))
-            try:
-                if image_filename:
-                    image_path = os.path.join("uploads", image_filename)
-                    if os.path.exists(image_path):
-                        os.remove(image_path)
-            except Exception as e:
-                print(f"Error deleting image file for post {post_id}: {e}")
+        if not user:
+            conn.close()
+            raise HTTPException(status_code=404, detail="User not found")
         
-        cursor.execute("DELETE FROM posts WHERE uploader_id = ?", (user_id,))
-        cursor.execute("DELETE FROM pools WHERE creator_id = ?", (user_id,))
-        cursor.execute("DELETE FROM favorites WHERE user_id = ?", (user_id,))
-        cursor.execute("DELETE FROM user_tos_acceptance WHERE user_id = ?", (user_id,))
-        cursor.execute("DELETE FROM password_reset_tokens WHERE user_id = ?", (user_id,))
-        cursor.execute("DELETE FROM activity_log WHERE user_id = ?", (user_id,))
-        cursor.execute("DELETE FROM users WHERE id = ?", (user_id,))
+        # Log activity BEFORE deletion
+        log_activity(admin_user.get("id"), "user_deletion", None, None)
+        
+        # Soft delete: mark user as deleted
+        from datetime import datetime
+        deleted_at = datetime.now().isoformat()
+        cursor.execute("UPDATE users SET deleted_at = ? WHERE id = ?", (deleted_at, user_id))
+        
+        # Soft delete: mark user's posts as deleted
+        cursor.execute("UPDATE posts SET deleted_at = ? WHERE uploader_id = ? AND deleted_at IS NULL", (deleted_at, user_id))
+        
+        # Soft delete: mark user's pools as deleted
+        cursor.execute("UPDATE pools SET deleted_at = ? WHERE creator_id = ? AND deleted_at IS NULL", (deleted_at, user_id))
         
         conn.commit()
         conn.close()
         
-        # Log activity AFTER deletion
-        log_activity(admin_user.get("id"), "user_deletion", None, None)
-        
-        return {"message": "User and all related data deleted"}
+        return {"message": "Usuario y contenido relacionado eliminado"}
     except Exception as e:
         print(f"Error deleting user {user_id}: {str(e)}")
-        raise HTTPException(status_code=500, detail=f"Error deleting user: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Error al eliminar usuario: {str(e)}")
+
+# ============== MODERATION: DELETED CONTENT ==============
+
+@app.get("/api/admin/deleted/posts")
+async def get_deleted_posts(limit: int = 100, user = Depends(require_auth)):
+    """Get all soft-deleted posts (admin only)"""
+    if not user.get("is_admin"):
+        raise HTTPException(status_code=403, detail="Only admins can view deleted posts")
+    
+    conn = get_db()
+    cursor = conn.cursor()
+    
+    cursor.execute("""
+        SELECT p.id, p.description, p.uploader_id, u.username AS uploader_username,
+               p.favorite_count, p.deleted_at
+        FROM posts p
+        LEFT JOIN users u ON p.uploader_id = u.id
+        WHERE p.deleted_at IS NOT NULL
+        ORDER BY p.deleted_at DESC
+        LIMIT ?
+    """, (limit,))
+    
+    posts = [dict(row) for row in cursor.fetchall()]
+    conn.close()
+    
+    return {"posts": posts}
+
+@app.get("/api/admin/deleted/pools")
+async def get_deleted_pools(limit: int = 100, user = Depends(require_auth)):
+    """Get all soft-deleted pools (admin only)"""
+    if not user.get("is_admin"):
+        raise HTTPException(status_code=403, detail="Only admins can view deleted pools")
+    
+    conn = get_db()
+    cursor = conn.cursor()
+    
+    cursor.execute("""
+        SELECT id, name, description, creator_id, deleted_at
+        FROM pools
+        WHERE deleted_at IS NOT NULL
+        ORDER BY deleted_at DESC
+        LIMIT ?
+    """, (limit,))
+    
+    pools = [dict(row) for row in cursor.fetchall()]
+    conn.close()
+    
+    return {"pools": pools}
+
+@app.get("/api/admin/deleted/users")
+async def get_deleted_users(limit: int = 100, user = Depends(require_auth)):
+    """Get all soft-deleted users (admin only)"""
+    if not user.get("is_admin"):
+        raise HTTPException(status_code=403, detail="Only admins can view deleted users")
+    
+    conn = get_db()
+    cursor = conn.cursor()
+    
+    cursor.execute("""
+        SELECT id, username, email, created_at, deleted_at
+        FROM users
+        WHERE deleted_at IS NOT NULL
+        ORDER BY deleted_at DESC
+        LIMIT ?
+    """, (limit,))
+    
+    users = [dict(row) for row in cursor.fetchall()]
+    conn.close()
+    
+    return {"users": users}
+
+@app.post("/api/admin/restore/post/{post_id}")
+async def restore_post_admin(post_id: int, user = Depends(require_auth)):
+    """Restore a soft-deleted post (admin only)"""
+    if not user.get("is_admin"):
+        raise HTTPException(status_code=403, detail="Only admins can restore posts")
+    
+    conn = get_db()
+    cursor = conn.cursor()
+    
+    # Check if post exists and is deleted
+    cursor.execute("SELECT id FROM posts WHERE id = ? AND deleted_at IS NOT NULL", (post_id,))
+    post = cursor.fetchone()
+    
+    if not post:
+        conn.close()
+        raise HTTPException(status_code=404, detail="Deleted post not found")
+    
+    # Log activity BEFORE restoration
+    log_activity(user.get("id"), "post_moderation_restore", post_id, None)
+    
+    # Restore post
+    cursor.execute("UPDATE posts SET deleted_at = NULL WHERE id = ?", (post_id,))
+    
+    conn.commit()
+    conn.close()
+    
+    return {"message": "Publicación restaurada"}
+
+@app.post("/api/admin/restore/pool/{pool_id}")
+async def restore_pool_admin(pool_id: int, user = Depends(require_auth)):
+    """Restore a soft-deleted pool (admin only)"""
+    if not user.get("is_admin"):
+        raise HTTPException(status_code=403, detail="Only admins can restore pools")
+    
+    conn = get_db()
+    cursor = conn.cursor()
+    
+    # Check if pool exists and is deleted
+    cursor.execute("SELECT id FROM pools WHERE id = ? AND deleted_at IS NOT NULL", (pool_id,))
+    pool = cursor.fetchone()
+    
+    if not pool:
+        conn.close()
+        raise HTTPException(status_code=404, detail="Deleted pool not found")
+    
+    # Log activity BEFORE restoration
+    log_activity(user.get("id"), "pool_moderation_restore", None, pool_id)
+    
+    # Restore pool
+    cursor.execute("UPDATE pools SET deleted_at = NULL WHERE id = ?", (pool_id,))
+    
+    conn.commit()
+    conn.close()
+    
+    return {"message": "Colección restaurada"}
+
+@app.post("/api/admin/restore/user/{user_id}")
+async def restore_user_admin(user_id: int, admin_user = Depends(require_auth)):
+    """Restore a soft-deleted user (admin only)"""
+    if not admin_user.get("is_admin"):
+        raise HTTPException(status_code=403, detail="Only admins can restore users")
+    
+    conn = get_db()
+    cursor = conn.cursor()
+    
+    # Check if user exists and is deleted
+    cursor.execute("SELECT id FROM users WHERE id = ? AND deleted_at IS NOT NULL", (user_id,))
+    user = cursor.fetchone()
+    
+    if not user:
+        conn.close()
+        raise HTTPException(status_code=404, detail="Deleted user not found")
+    
+    # Log activity BEFORE restoration
+    log_activity(admin_user.get("id"), "user_restoration", None, None)
+    
+    # Restore user and their content
+    cursor.execute("UPDATE users SET deleted_at = NULL WHERE id = ?", (user_id,))
+    cursor.execute("UPDATE posts SET deleted_at = NULL WHERE uploader_id = ?", (user_id,))
+    cursor.execute("UPDATE pools SET deleted_at = NULL WHERE creator_id = ?", (user_id,))
+    
+    conn.commit()
+    conn.close()
+    
+    return {"message": "Usuario y contenido restaurado"}
 
 @app.get("/api/admin/activity-log")
 async def get_admin_activity_log(limit: int = 100, user = Depends(require_auth)):

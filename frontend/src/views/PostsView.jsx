@@ -26,8 +26,8 @@ export function PostsView({
             <button 
               onClick={() => onToggleMostRelevant(true)}
               style={{
-                background: mostRelevant ? '#ac6ec5' : '#ccc',
-                color: mostRelevant ? 'white' : 'black',
+                background: mostRelevant ? '#ffd690' : '#ccc',
+                color: mostRelevant ? 'black' : 'black',
                 border: 'none',
                 padding: '0.5rem 1rem',
                 borderRadius: '4px',
@@ -39,8 +39,8 @@ export function PostsView({
             <button 
               onClick={() => onToggleMostRelevant(false)}
               style={{
-                background: !mostRelevant ? '#ac6ec5' : '#ccc',
-                color: !mostRelevant ? 'white' : 'black',
+                background: !mostRelevant ? '#ffd690' : '#ccc',
+                color: !mostRelevant ? 'black' : 'black',
                 border: 'none',
                 padding: '0.5rem 1rem',
                 borderRadius: '4px',

@@ -203,7 +203,7 @@ def get_pool_statistics():
     cursor = conn.cursor()
     
     # Total pools
-    cursor.execute("SELECT COUNT(*) as count FROM pools")
+    cursor.execute("SELECT COUNT(*) as count FROM pools WHERE deleted_at IS NULL")
     total = cursor.fetchone()["count"]
     
     # Pools by creator
@@ -212,18 +212,38 @@ def get_pool_statistics():
             u.username,
             COUNT(p.id) as pool_count
         FROM users u
-        LEFT JOIN pools p ON u.id = p.creator_id
+        LEFT JOIN pools p ON u.id = p.creator_id AND p.deleted_at IS NULL
         GROUP BY u.id, u.username
         ORDER BY pool_count DESC
         LIMIT 10
     """)
     top_creators = [dict(row) for row in cursor.fetchall()]
+
+    # Top pools by number of contained posts and total favorites of contained posts
+    cursor.execute("""
+        SELECT
+            pl.id,
+            pl.name,
+            u.username as creator_username,
+            COUNT(p.id) as post_count,
+            COALESCE(SUM(p.favorite_count), 0) as total_favorites
+        FROM pools pl
+        LEFT JOIN users u ON u.id = pl.creator_id
+        LEFT JOIN pool_posts pp ON pp.pool_id = pl.id
+        LEFT JOIN posts p ON p.id = pp.post_id AND p.deleted_at IS NULL
+        WHERE pl.deleted_at IS NULL
+        GROUP BY pl.id, pl.name, u.username
+        ORDER BY post_count DESC, total_favorites DESC
+        LIMIT 20
+    """)
+    top_pools = [dict(row) for row in cursor.fetchall()]
     
     conn.close()
     
     return {
         "total_pools": total,
         "top_creators": top_creators,
+        "top_pools": top_pools,
     }
 
 

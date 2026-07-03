@@ -149,6 +149,26 @@ export const api = {
   
   getAdminActivityLog: (limit = 100) =>
     axios.get(`${API_BASE}/admin/activity-log`, { params: { limit } }),
+  
+  // Deleted content (moderation)
+  getDeletedPosts: (limit = 100) =>
+    axios.get(`${API_BASE}/admin/deleted/posts`, { params: { limit } }),
+  
+  getDeletedPools: (limit = 100) =>
+    axios.get(`${API_BASE}/admin/deleted/pools`, { params: { limit } }),
+  
+  getDeletedUsers: (limit = 100) =>
+    axios.get(`${API_BASE}/admin/deleted/users`, { params: { limit } }),
+  
+  // Restore content (moderation)
+  restorePost: (postId) =>
+    axios.post(`${API_BASE}/admin/restore/post/${postId}`),
+  
+  restorePool: (poolId) =>
+    axios.post(`${API_BASE}/admin/restore/pool/${poolId}`),
+  
+  restoreUser: (userId) =>
+    axios.post(`${API_BASE}/admin/restore/user/${userId}`),
 };
 
 // Named exports for convenience
