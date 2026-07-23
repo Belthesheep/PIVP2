@@ -17,3 +17,7 @@ uploads/
 # Frontend build output
 frontend/dist/
 frontend/node_modules/
+
+# Documentation folders
+docs/
+docsguide/
