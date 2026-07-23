@@ -1,8 +1,8 @@
-from fastapi import FastAPI, HTTPException, UploadFile, File, Form, Depends, Cookie
+from fastapi import FastAPI, HTTPException, UploadFile, File, Form, Depends, Cookie, Body
 from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse
-from pydantic import BaseModel, Field
+from fastapi.responses import JSONResponse, StreamingResponse
+from pydantic import BaseModel, Field, EmailStr
 from typing import List, Optional
 import sqlite3
 import datetime
@@ -10,6 +10,23 @@ import hashlib
 import os
 import shutil
 import secrets
+import re
+import jwt
+from email_service import generate_reset_token, validate_reset_token, send_reset_email
+from analytics_service import (
+    get_post_count,
+    get_user_count,
+    get_folder_size_mb,
+    get_activity_by_period,
+    log_activity,
+    get_summary_report,
+    get_top_uploaders,
+    get_post_statistics,
+    get_pool_statistics,
+    get_tag_statistics,
+    get_activity_log,
+)
+from export_service import generate_csv_report, generate_json_report, generate_pdf_report
 
 # Database setup
 DB_NAME = "sheepbooru.db"
@@ -31,11 +48,22 @@ def get_db():
 # Pydantic Models
 class UserCreate(BaseModel):
     username: str = Field(..., min_length=3)
+    email: str = Field(..., min_length=5)
     password: str = Field(..., min_length=6)
 
 class UserLogin(BaseModel):
-    username: str
-    password: str
+    username_or_email: str = Field(..., min_length=3)
+    password: str = Field(..., min_length=6)
+
+class PasswordResetRequest(BaseModel):
+    email: str = Field(..., min_length=5)
+
+class PasswordReset(BaseModel):
+    token: str = Field(..., min_length=1)
+    new_password: str = Field(..., min_length=6)
+
+class TokenValidation(BaseModel):
+    token: str = Field(..., min_length=1)
 
 class User(BaseModel):
     id: int
@@ -101,38 +129,66 @@ def require_auth(session_token: Optional[str] = Cookie(None)):
 
 @app.post("/api/auth/register", status_code=201)
 async def register(user: UserCreate):
-    """Register a new user"""
+    """Register a new user with email"""
     conn = get_db()
     cursor = conn.cursor()
     
+    # Validate email format
+    email_regex = r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$'
+    if not re.match(email_regex, user.email):
+        conn.close()
+        raise HTTPException(status_code=400, detail="Invalid email format")
+    
+    # Check if username exists
     cursor.execute("SELECT id FROM users WHERE username = ?", (user.username,))
     if cursor.fetchone():
         conn.close()
         raise HTTPException(status_code=409, detail="Username already exists")
     
+    # Check if email exists
+    cursor.execute("SELECT id FROM users WHERE email = ?", (user.email,))
+    if cursor.fetchone():
+        conn.close()
+        raise HTTPException(status_code=409, detail="Email already registered")
+    
     password_hash = hash_password(user.password)
     created_at = datetime.datetime.now().isoformat()
     
     cursor.execute(
-        "INSERT INTO users (username, password_hash, is_admin, created_at) VALUES (?, ?, 0, ?)",
-        (user.username, password_hash, created_at)
+        "INSERT INTO users (username, email, password_hash, is_admin, accepted_tos, created_at) VALUES (?, ?, ?, 0, 1, ?)",
+        (user.username, user.email, password_hash, created_at)
     )
     conn.commit()
     user_id = cursor.lastrowid
+    
+    # Get current T&C version
+    cursor.execute("SELECT id FROM terms_and_conditions ORDER BY created_at DESC LIMIT 1")
+    tos_row = cursor.fetchone()
+    if tos_row:
+        tos_id = tos_row[0]
+        # Record T&C acceptance
+        cursor.execute(
+            "INSERT INTO user_tos_acceptance (user_id, tos_id, accepted_at) VALUES (?, ?, ?)",
+            (user_id, tos_id, created_at)
+        )
+        conn.commit()
+    
     conn.close()
     
-    return {"id": user_id, "username": user.username, "message": "User created successfully"}
+    return {"id": user_id, "username": user.username, "email": user.email, "message": "User created successfully"}
 
 @app.post("/api/auth/login")
 async def login(credentials: UserLogin):
-    """Login and create session"""
+    """Login with username or email"""
     conn = get_db()
     cursor = conn.cursor()
     
     password_hash = hash_password(credentials.password)
+    
+    # Try to login with username or email
     cursor.execute(
-        "SELECT id, username, is_admin, created_at FROM users WHERE username = ? AND password_hash = ?",
-        (credentials.username, password_hash)
+        "SELECT id, username, email, is_admin, created_at FROM users WHERE (username = ? OR email = ?) AND password_hash = ?",
+        (credentials.username_or_email, credentials.username_or_email, password_hash)
     )
     user = cursor.fetchone()
     conn.close()
@@ -142,10 +198,11 @@ async def login(credentials: UserLogin):
     
     # Create session
     session_token = secrets.token_hex(32)
-    sessions[session_token] = dict(user)
+    user_dict = dict(user)
+    sessions[session_token] = user_dict
     
     response = JSONResponse(content={
-        "user": dict(user),
+        "user": user_dict,
         "message": "Login successful"
     })
     response.set_cookie(
@@ -173,6 +230,73 @@ async def get_me(user = Depends(get_current_user)):
         raise HTTPException(status_code=401, detail="Not authenticated")
     return user
 
+@app.post("/api/auth/request-password-reset")
+async def request_password_reset(request: PasswordResetRequest):
+    """Solicitar token de reseteo de contraseña por correo con JWT"""
+    conn = get_db()
+    cursor = conn.cursor()
+    
+    # Buscar usuario por correo
+    cursor.execute("SELECT id, username, email FROM users WHERE email = ?", (request.email,))
+    user = cursor.fetchone()
+    
+    if not user:
+        # No revelar si el correo existe o no por seguridad
+        conn.close()
+        return {"message": "Si el correo está registrado, recibirás un enlace para restablecer tu contraseña"}
+    
+    # Generar token JWT
+    try:
+        reset_token = generate_reset_token(user["id"], user["email"])
+    except Exception as e:
+        conn.close()
+        raise HTTPException(status_code=500, detail=f"Error generando token: {str(e)}")
+    
+    # Enviar correo con enlace
+    email_sent = send_reset_email(user["email"], user["username"], reset_token)
+    
+    # En modo desarrollo, mostrar token en consola si el correo no se envió
+    if not email_sent:
+        print(f"[DEV] Token de reseteo para {user['email']}: {reset_token}")
+    
+    conn.close()
+    
+    return {"message": "Si el correo está registrado, recibirás un enlace para restablecer tu contraseña"}
+
+@app.post("/api/auth/validate-reset-token")
+async def validate_reset_token_endpoint(validation: TokenValidation):
+    """Validar token JWT para reseteo de contraseña"""
+    try:
+        payload = validate_reset_token(validation.token)
+        return {"valid": True, "user_id": payload["user_id"], "email": payload["email"]}
+    except jwt.InvalidTokenError as e:
+        raise HTTPException(status_code=400, detail=f"Token inválido: {str(e)}")
+
+@app.post("/api/auth/reset-password")
+async def reset_password(reset: PasswordReset):
+    """Restablecer contraseña usando token JWT"""
+    # Validar token primero
+    try:
+        payload = validate_reset_token(reset.token)
+        user_id = payload["user_id"]
+    except jwt.InvalidTokenError as e:
+        raise HTTPException(status_code=400, detail=f"Token inválido o expirado: {str(e)}")
+    
+    conn = get_db()
+    cursor = conn.cursor()
+    
+    # Actualizar contraseña
+    password_hash = hash_password(reset.new_password)
+    cursor.execute(
+        "UPDATE users SET password_hash = ? WHERE id = ?",
+        (password_hash, user_id)
+    )
+    
+    conn.commit()
+    conn.close()
+    
+    return {"message": "Contraseña restablecida exitosamente"}
+
 # ============== USER ENDPOINTS ==============
 
 @app.get("/api/users")
@@ -189,21 +313,55 @@ async def list_users():
 
 @app.post("/api/posts", status_code=201)
 async def create_post(
-    image: UploadFile = File(...),
+    media: UploadFile = File(...),
     description: Optional[str] = Form(None),
     tags: str = Form(...),
     user = Depends(require_auth)
 ):
-    """Upload a new post with image and tags"""
+    """Upload a new post with image or video and tags"""
     conn = get_db()
     cursor = conn.cursor()
     
-    # Save image file
-    filename = f"{datetime.datetime.now().timestamp()}_{image.filename}"
+    # Validate file type and size
+    MAX_FILE_SIZE = 104857600  # 100MB in bytes
+    ALLOWED_IMAGE_TYPES = {"image/jpeg", "image/png", "image/gif", "image/webp"}
+    ALLOWED_VIDEO_TYPES = {"video/mp4", "video/webm", "video/quicktime", "video/x-msvideo"}
+    ALLOWED_EXTENSIONS = {".jpg", ".jpeg", ".png", ".gif", ".webp", ".mp4", ".webm", ".mov", ".avi"}
+    
+    # Get file extension
+    filename_lower = media.filename.lower()
+    file_ext = os.path.splitext(filename_lower)[1]
+    content_type = media.content_type or ""
+    
+    # Check file extension
+    if file_ext not in ALLOWED_EXTENSIONS:
+        conn.close()
+        raise HTTPException(status_code=400, detail=f"File type not allowed. Supported: images (JPG, PNG, GIF, WebP) and videos (MP4, WebM, MOV, AVI)")
+    
+    # Check MIME type
+    if content_type not in ALLOWED_IMAGE_TYPES and content_type not in ALLOWED_VIDEO_TYPES:
+        # Still allow if extension matches, as MIME type can be unreliable
+        if file_ext not in {".jpg", ".jpeg", ".png", ".gif", ".webp", ".mp4", ".webm", ".mov", ".avi"}:
+            conn.close()
+            raise HTTPException(status_code=400, detail="Invalid file type")
+    
+    # Check file size
+    file_content = await media.read()
+    file_size = len(file_content)
+    if file_size > MAX_FILE_SIZE:
+        conn.close()
+        raise HTTPException(status_code=400, detail=f"File too large. Maximum size is 100MB (your file is {file_size / 1024 / 1024:.2f}MB)")
+    
+    if file_size == 0:
+        conn.close()
+        raise HTTPException(status_code=400, detail="File is empty")
+    
+    # Save file
+    filename = f"{datetime.datetime.now().timestamp()}_{media.filename}"
     filepath = os.path.join(UPLOAD_DIR, filename)
     
     with open(filepath, "wb") as f:
-        shutil.copyfileobj(image.file, f)
+        f.write(file_content)
     
     # Create post
     upload_date = datetime.datetime.now().isoformat()
@@ -222,44 +380,67 @@ async def create_post(
     conn.commit()
     conn.close()
     
+    # Log activity
+    log_activity(user["id"], "upload", post_id=post_id)
+    
     return {"id": post_id, "message": "Post created successfully", "tags": tag_list}
 
 @app.get("/api/posts")
-async def list_posts(tag: Optional[str] = None, user_id: Optional[int] = None):
-    """List all posts, optionally filtered by tag or user"""
+async def list_posts(
+    tag: Optional[str] = None,
+    user_id: Optional[int] = None,
+    most_relevant: bool = True,
+    current_user = Depends(get_current_user)
+):
+    """Listar posts, opcionalmente filtrados por etiqueta, usuario o relevancia"""
     conn = get_db()
     cursor = conn.cursor()
+    include_deleted = current_user and current_user.get("is_admin")
+    deleted_clause = "" if include_deleted else " AND p.deleted_at IS NULL"
     
     if tag:
-        query = """
+        # Filtrar por etiqueta
+        query = f"""
             SELECT DISTINCT p.id, p.image_filename, p.uploader_id, u.username as uploader_username,
-                   p.upload_date, p.description, p.favorite_count
+                   p.upload_date, p.description, p.favorite_count, p.deleted_at
             FROM posts p
             JOIN users u ON p.uploader_id = u.id
             JOIN post_tags pt ON p.id = pt.post_id
             JOIN tags t ON pt.tag_id = t.id
-            WHERE t.tag_name = ?
+            WHERE t.tag_name = ?{deleted_clause}
             ORDER BY p.upload_date DESC
         """
         cursor.execute(query, (tag.lower(),))
     elif user_id:
-        query = """
+        query = f"""
             SELECT p.id, p.image_filename, p.uploader_id, u.username as uploader_username,
-                   p.upload_date, p.description, p.favorite_count
+                   p.upload_date, p.description, p.favorite_count, p.deleted_at
             FROM posts p
             JOIN users u ON p.uploader_id = u.id
-            WHERE p.uploader_id = ?
+            WHERE p.uploader_id = ?{deleted_clause}
             ORDER BY p.upload_date DESC
         """
         cursor.execute(query, (user_id,))
     else:
-        query = """
-            SELECT p.id, p.image_filename, p.uploader_id, u.username as uploader_username,
-                   p.upload_date, p.description, p.favorite_count
-            FROM posts p
-            JOIN users u ON p.uploader_id = u.id
-            ORDER BY p.upload_date DESC
-        """
+        # Aplicar filtro de "más relevante" (últimos 7 días, ordenados por favoritos)
+        if most_relevant:
+            query = f"""
+                SELECT p.id, p.image_filename, p.uploader_id, u.username as uploader_username,
+                       p.upload_date, p.description, p.favorite_count, p.deleted_at
+                FROM posts p
+                JOIN users u ON p.uploader_id = u.id
+                WHERE p.upload_date >= datetime('now', '-7 days'){deleted_clause}
+                ORDER BY p.favorite_count DESC, p.upload_date DESC
+            """
+        else:
+            query = f"""
+                SELECT p.id, p.image_filename, p.uploader_id, u.username as uploader_username,
+                       p.upload_date, p.description, p.favorite_count, p.deleted_at
+                FROM posts p
+                JOIN users u ON p.uploader_id = u.id
+                WHERE 1=1{deleted_clause}
+                ORDER BY p.upload_date DESC
+            """
         cursor.execute(query)
     
     posts = cursor.fetchall()
@@ -289,12 +470,14 @@ async def get_post(post_id: int, current_user = Depends(get_current_user)):
     conn = get_db()
     cursor = conn.cursor()
     
-    cursor.execute("""
+    include_deleted = current_user and current_user.get("is_admin")
+    deleted_clause = "" if include_deleted else " AND p.deleted_at IS NULL"
+    cursor.execute(f"""
         SELECT p.id, p.image_filename, p.uploader_id, u.username as uploader_username,
-               p.upload_date, p.description, p.favorite_count
+               p.upload_date, p.description, p.favorite_count, p.deleted_at
         FROM posts p
         JOIN users u ON p.uploader_id = u.id
-        WHERE p.id = ?
+        WHERE p.id = ?{deleted_clause}
     """, (post_id,))
     
     post = cursor.fetchone()
@@ -316,7 +499,7 @@ async def get_post(post_id: int, current_user = Depends(get_current_user)):
         SELECT p.id, p.name
         FROM pools p
         JOIN pool_posts pp ON p.id = pp.pool_id
-        WHERE pp.post_id = ?
+        WHERE pp.post_id = ? AND p.deleted_at IS NULL
     """, (post_id,))
     pools = [dict(row) for row in cursor.fetchall()]
     
@@ -365,6 +548,9 @@ async def delete_post(post_id: int, user = Depends(require_auth)):
     cursor.execute("DELETE FROM posts WHERE id = ?", (post_id,))
     conn.commit()
     conn.close()
+    
+    # Log activity
+    log_activity(user["id"], "delete", post_id=post_id)
     
     return {"message": "Post deleted successfully"}
 
@@ -441,7 +627,7 @@ async def get_user_favorites(user_id: int):
         FROM posts p
         JOIN users u ON p.uploader_id = u.id
         JOIN favorites f ON p.id = f.post_id
-        WHERE f.user_id = ?
+        WHERE f.user_id = ? AND p.deleted_at IS NULL
         ORDER BY f.favorited_at DESC
     """, (user_id,))
     
@@ -486,15 +672,18 @@ async def create_pool(pool: PoolCreate, user = Depends(require_auth)):
     return {"id": pool_id, "name": pool.name, "message": "Pool created successfully"}
 
 @app.get("/api/pools")
-async def list_pools():
+async def list_pools(current_user = Depends(get_current_user)):
     """List all pools"""
+    include_deleted = current_user and current_user.get("is_admin")
+    deleted_clause = "" if include_deleted else "WHERE p.deleted_at IS NULL"
     conn = get_db()
     cursor = conn.cursor()
-    cursor.execute("""
+    cursor.execute(f"""
         SELECT p.id, p.name, p.description, p.creator_id, u.username as creator_username,
-               p.created_at
+               p.created_at, p.deleted_at
         FROM pools p
         JOIN users u ON p.creator_id = u.id
+        {deleted_clause}
         ORDER BY p.created_at DESC
     """)
 
@@ -512,17 +701,19 @@ async def list_pools():
     return result
 
 @app.get("/api/pools/{pool_id}")
-async def get_pool(pool_id: int):
+async def get_pool(pool_id: int, current_user = Depends(get_current_user)):
     """Get a specific pool with its posts in order"""
+    include_deleted = current_user and current_user.get("is_admin")
+    deleted_clause = "" if include_deleted else " AND p.deleted_at IS NULL"
     conn = get_db()
     cursor = conn.cursor()
     
-    cursor.execute("""
+    cursor.execute(f"""
         SELECT p.id, p.name, p.description, p.creator_id, u.username as creator_username,
-               p.created_at
+               p.created_at, p.deleted_at
         FROM pools p
         JOIN users u ON p.creator_id = u.id
-        WHERE p.id = ?
+        WHERE p.id = ?{deleted_clause}
     """, (pool_id,))
     
     pool = cursor.fetchone()
@@ -531,13 +722,15 @@ async def get_pool(pool_id: int):
         raise HTTPException(status_code=404, detail="Pool not found")
     
     # Get posts in order
-    cursor.execute("""
+    include_deleted_posts = current_user and current_user.get("is_admin")
+    deleted_post_clause = "" if include_deleted_posts else " AND p.deleted_at IS NULL"
+    cursor.execute(f"""
         SELECT p.id, p.image_filename, p.uploader_id, u.username as uploader_username,
-               p.upload_date, p.description, p.favorite_count, pp.order_index
+               p.upload_date, p.description, p.favorite_count, p.deleted_at, pp.order_index
         FROM posts p
         JOIN users u ON p.uploader_id = u.id
         JOIN pool_posts pp ON p.id = pp.post_id
-        WHERE pp.pool_id = ?
+        WHERE pp.pool_id = ?{deleted_post_clause}
         ORDER BY pp.order_index
     """, (pool_id,))
     
@@ -691,6 +884,642 @@ async def list_tags():
     conn.close()
     
     return [dict(t) for t in tags]
+
+@app.get("/api/tags/with-thumbnails")
+async def list_tags_with_thumbnails():
+    """List all tags with post counts and top favorited image thumbnail, sorted by popularity"""
+    conn = get_db()
+    cursor = conn.cursor()
+    
+    cursor.execute("""
+        SELECT t.id, t.tag_name, COUNT(pt.post_id) as post_count
+        FROM tags t
+        LEFT JOIN post_tags pt ON t.id = pt.tag_id
+        GROUP BY t.id, t.tag_name
+        ORDER BY post_count DESC, t.tag_name
+    """)
+    
+    tags_data = cursor.fetchall()
+    
+    # For each tag, get the top favorited post's image filename
+    tags_result = []
+    for tag in tags_data:
+        tag_id = tag["id"]
+        tag_name = tag["tag_name"]
+        post_count = tag["post_count"]
+        
+        # Get the most favorited post with this tag
+        cursor.execute("""
+            SELECT p.image_filename
+            FROM posts p
+            JOIN post_tags pt ON p.id = pt.post_id
+            WHERE pt.tag_id = ?
+            ORDER BY p.favorite_count DESC
+            LIMIT 1
+        """, (tag_id,))
+        
+        thumbnail_result = cursor.fetchone()
+        thumbnail_image = thumbnail_result["image_filename"] if thumbnail_result else None
+        
+        tags_result.append({
+            "id": tag_id,
+            "tag_name": tag_name,
+            "post_count": post_count,
+            "thumbnail_image": thumbnail_image
+        })
+    
+    conn.close()
+    
+    return tags_result
+
+# ============== REPORTING ENDPOINTS ==============
+
+@app.get("/api/reports/summary")
+async def get_report_summary(user = Depends(require_auth)):
+    """Get comprehensive summary report (admin only)"""
+    if not user.get("is_admin"):
+        raise HTTPException(status_code=403, detail="Only admins can access reports")
+    
+    return get_summary_report()
+
+@app.get("/api/reports/activity")
+async def get_activity_report(period: str = "day", user = Depends(require_auth)):
+    """Get activity report for specified period (admin only)"""
+    if not user.get("is_admin"):
+        raise HTTPException(status_code=403, detail="Only admins can access reports")
+    
+    if period not in ["day", "week", "month"]:
+        raise HTTPException(status_code=400, detail="Period must be 'day', 'week', or 'month'")
+    
+    return get_activity_by_period(period)
+
+@app.get("/api/reports/posts")
+async def get_posts_report(user = Depends(require_auth)):
+    """Get post statistics report (admin only)"""
+    if not user.get("is_admin"):
+        raise HTTPException(status_code=403, detail="Only admins can access reports")
+    
+    return get_post_statistics()
+
+@app.get("/api/reports/pools")
+async def get_pools_report(user = Depends(require_auth)):
+    """Get pool statistics report (admin only)"""
+    if not user.get("is_admin"):
+        raise HTTPException(status_code=403, detail="Only admins can access reports")
+    
+    return get_pool_statistics()
+
+@app.get("/api/reports/tags")
+async def get_tags_report(limit: int = 20, user = Depends(require_auth)):
+    """Get tag statistics report (admin only)"""
+    if not user.get("is_admin"):
+        raise HTTPException(status_code=403, detail="Only admins can access reports")
+    
+    return get_tag_statistics(limit)
+
+@app.get("/api/reports/top-uploaders")
+async def get_top_uploaders_report(limit: int = 10, user = Depends(require_auth)):
+    """Get top uploaders report (admin only)"""
+    if not user.get("is_admin"):
+        raise HTTPException(status_code=403, detail="Only admins can access reports")
+    
+    return {"top_uploaders": get_top_uploaders(limit)}
+
+@app.get("/api/reports/activity-log")
+async def get_activity_log_report(limit: int = 100, action_type: Optional[str] = None, user = Depends(require_auth)):
+    """Get activity log entries (admin only)"""
+    if not user.get("is_admin"):
+        raise HTTPException(status_code=403, detail="Only admins can access reports")
+    
+    return {"activity_log": get_activity_log(limit, action_type)}
+
+# ============== EXPORT ENDPOINTS ==============
+
+@app.get("/api/reports/export/csv")
+async def export_report_csv(report_type: str = "summary", user = Depends(require_auth)):
+    """Export report as CSV (admin only)"""
+    if not user.get("is_admin"):
+        raise HTTPException(status_code=403, detail="Only admins can export reports")
+    
+    if report_type not in ["summary", "posts", "pools", "tags", "uploaders"]:
+        raise HTTPException(status_code=400, detail="Invalid report type")
+    
+    try:
+        csv_content = generate_csv_report(report_type)
+        filename = f"report_{report_type}_{datetime.datetime.now().strftime('%Y%m%d_%H%M%S')}.csv"
+        
+        return StreamingResponse(
+            iter([csv_content]),
+            media_type="text/csv",
+            headers={"Content-Disposition": f"attachment; filename={filename}"}
+        )
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error generating CSV: {str(e)}")
+
+@app.get("/api/reports/export/json")
+async def export_report_json(report_type: str = "summary", user = Depends(require_auth)):
+    """Export report as JSON (admin only)"""
+    if not user.get("is_admin"):
+        raise HTTPException(status_code=403, detail="Only admins can export reports")
+    
+    if report_type not in ["summary", "posts", "pools", "tags", "uploaders"]:
+        raise HTTPException(status_code=400, detail="Invalid report type")
+    
+    try:
+        json_content = generate_json_report(report_type)
+        filename = f"report_{report_type}_{datetime.datetime.now().strftime('%Y%m%d_%H%M%S')}.json"
+        
+        return StreamingResponse(
+            iter([json_content]),
+            media_type="application/json",
+            headers={"Content-Disposition": f"attachment; filename={filename}"}
+        )
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error generating JSON: {str(e)}")
+
+@app.get("/api/reports/export/pdf")
+async def export_report_pdf(report_type: str = "summary", user = Depends(require_auth)):
+    """Export report as PDF (admin only)"""
+    if not user.get("is_admin"):
+        raise HTTPException(status_code=403, detail="Only admins can export reports")
+    
+    if report_type not in ["summary", "posts", "pools", "tags", "uploaders"]:
+        raise HTTPException(status_code=400, detail="Invalid report type. PDF supports: summary, posts, pools, tags, uploaders")
+    
+    try:
+        pdf_content = generate_pdf_report(report_type)
+        filename = f"report_{report_type}_{datetime.datetime.now().strftime('%Y%m%d_%H%M%S')}.pdf"
+        
+        return StreamingResponse(
+            iter([pdf_content]),
+            media_type="application/pdf",
+            headers={"Content-Disposition": f"attachment; filename={filename}"}
+        )
+    except Exception as e:
+        print(f"PDF export error: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Error generating PDF: {str(e)}")
+
+# ============== TERMS & CONDITIONS ENDPOINTS ==============
+
+@app.get("/api/tos/current")
+async def get_current_tos():
+    """Get current Terms & Conditions"""
+    conn = get_db()
+    cursor = conn.cursor()
+    
+    cursor.execute("""
+        SELECT id, version, content, created_at FROM terms_and_conditions
+        ORDER BY created_at DESC
+        LIMIT 1
+    """)
+    
+    tos = cursor.fetchone()
+    conn.close()
+    
+    if not tos:
+        raise HTTPException(status_code=404, detail="Terms & Conditions not found")
+    
+    return dict(tos)
+
+@app.get("/api/tos/history")
+async def get_tos_history():
+    """Get all Terms & Conditions versions"""
+    conn = get_db()
+    cursor = conn.cursor()
+    
+    cursor.execute("""
+        SELECT id, version, created_at FROM terms_and_conditions
+        ORDER BY created_at DESC
+    """)
+    
+    versions = [dict(row) for row in cursor.fetchall()]
+    conn.close()
+    
+    return {"versions": versions}
+
+@app.get("/api/tos/{version_id}")
+async def get_tos_version(version_id: int):
+    """Get specific T&C version"""
+    conn = get_db()
+    cursor = conn.cursor()
+    
+    cursor.execute("SELECT id, version, content, created_at FROM terms_and_conditions WHERE id = ?", (version_id,))
+    tos = cursor.fetchone()
+    conn.close()
+    
+    if not tos:
+        raise HTTPException(status_code=404, detail="Terms & Conditions version not found")
+    
+    return dict(tos)
+
+@app.post("/api/tos")
+async def create_tos(content: str = Form(...), version: str = Form(...), user = Depends(require_auth)):
+    """Create new T&C version (admin only)"""
+    if not user.get("is_admin"):
+        raise HTTPException(status_code=403, detail="Only admins can create Terms & Conditions")
+    
+    conn = get_db()
+    cursor = conn.cursor()
+    
+    # Check if version already exists
+    cursor.execute("SELECT id FROM terms_and_conditions WHERE version = ?", (version,))
+    if cursor.fetchone():
+        conn.close()
+        raise HTTPException(status_code=409, detail="T&C version already exists")
+    
+    created_at = datetime.datetime.now().isoformat()
+    cursor.execute(
+        "INSERT INTO terms_and_conditions (version, content, created_at) VALUES (?, ?, ?)",
+        (version, content, created_at)
+    )
+    
+    conn.commit()
+    tos_id = cursor.lastrowid
+    conn.close()
+    
+    return {"id": tos_id, "version": version, "message": "Terms & Conditions created successfully"}
+
+# ============== ADMIN ENDPOINTS ==============
+
+@app.get("/api/admin/users")
+async def list_users(limit: int = 100, user = Depends(require_auth)):
+    """List all users (admin only)"""
+    if not user.get("is_admin"):
+        raise HTTPException(status_code=403, detail="Only admins can list users")
+    
+    conn = get_db()
+    cursor = conn.cursor()
+    
+    cursor.execute("""
+        SELECT id, username, email, is_admin, created_at FROM users
+        ORDER BY created_at DESC
+        LIMIT ?
+    """, (limit,))
+    
+    users = [dict(row) for row in cursor.fetchall()]
+    conn.close()
+    
+    return {"users": users}
+
+@app.get("/api/admin/users/{user_id}")
+async def get_user_details(user_id: int, admin_user = Depends(require_auth)):
+    """Get user details (admin only)"""
+    if not admin_user.get("is_admin"):
+        raise HTTPException(status_code=403, detail="Only admins can view user details")
+    
+    conn = get_db()
+    cursor = conn.cursor()
+    
+    cursor.execute("""
+        SELECT id, username, email, is_admin, created_at FROM users WHERE id = ?
+    """, (user_id,))
+    
+    user = cursor.fetchone()
+    conn.close()
+    
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+    
+    return dict(user)
+
+@app.put("/api/admin/users/{user_id}/role")
+async def update_user_role(user_id: int, is_admin: bool = Body(..., embed=True), admin_user = Depends(require_auth)):
+    """Update user admin role (admin only)"""
+    if not admin_user.get("is_admin"):
+        raise HTTPException(status_code=403, detail="Only admins can change user roles")
+    
+    if user_id == admin_user.get("id") and not is_admin:
+        raise HTTPException(status_code=400, detail="Cannot remove your own admin status")
+    
+    conn = get_db()
+    cursor = conn.cursor()
+    
+    cursor.execute("UPDATE users SET is_admin = ? WHERE id = ?", (is_admin, user_id))
+    conn.commit()
+    conn.close()
+    
+    log_activity(admin_user.get("id"), f"user_role_change_to_{is_admin}", None, None)
+    
+    return {"message": f"User role updated to {'admin' if is_admin else 'regular'}"}
+
+@app.delete("/api/admin/posts/{post_id}")
+async def delete_post_admin(post_id: int, user = Depends(require_auth)):
+    """Delete any post (admin only) - uses soft delete"""
+    if not user.get("is_admin"):
+        raise HTTPException(status_code=403, detail="Only admins can delete posts")
+    
+    conn = get_db()
+    cursor = conn.cursor()
+    
+    # Get post details before deletion
+    cursor.execute("SELECT id FROM posts WHERE id = ? AND deleted_at IS NULL", (post_id,))
+    post = cursor.fetchone()
+    
+    if not post:
+        conn.close()
+        raise HTTPException(status_code=404, detail="Post not found")
+    
+    # Log activity BEFORE deletion
+    log_activity(user.get("id"), "post_moderation_delete", post_id, None)
+    
+    # Soft delete: mark as deleted instead of removing
+    from datetime import datetime
+    deleted_at = datetime.now().isoformat()
+    cursor.execute("UPDATE posts SET deleted_at = ? WHERE id = ?", (deleted_at, post_id))
+    
+    conn.commit()
+    conn.close()
+    
+    return {"message": "Publicación eliminada por admin"}
+
+@app.delete("/api/admin/posts/{post_id}/user/{original_user_id}")
+async def delete_post_user_posts(post_id: int, original_user_id: int, user = Depends(require_auth)):
+    """Delete specific user's post (admin only)"""
+    if not user.get("is_admin"):
+        raise HTTPException(status_code=403, detail="Only admins can delete posts")
+    
+    conn = get_db()
+    cursor = conn.cursor()
+    
+    cursor.execute("SELECT uploader_id, image_filename FROM posts WHERE id = ? AND uploader_id = ?", (post_id, original_user_id))
+    post = cursor.fetchone()
+    
+    if not post:
+        conn.close()
+        raise HTTPException(status_code=404, detail="Post not found")
+    
+    # Log activity BEFORE deletion (to avoid foreign key constraint)
+    log_activity(user.get("id"), "post_moderation_delete", post_id, None)
+    
+    # Delete related entries
+    cursor.execute("DELETE FROM favorites WHERE post_id = ?", (post_id,))
+    cursor.execute("DELETE FROM post_tags WHERE post_id = ?", (post_id,))
+    cursor.execute("DELETE FROM pool_posts WHERE post_id = ?", (post_id,))
+    cursor.execute("DELETE FROM posts WHERE id = ?", (post_id,))
+    
+    conn.commit()
+    conn.close()
+    
+    try:
+        if post[1]:
+            image_path = os.path.join("uploads", post[1])
+            if os.path.exists(image_path):
+                os.remove(image_path)
+    except Exception as e:
+        print(f"Error deleting image file: {e}")
+    
+    return {"message": "Post deleted by admin"}
+
+@app.delete("/api/admin/pools/{pool_id}")
+async def delete_pool_admin(pool_id: int, user = Depends(require_auth)):
+    """Delete any pool (admin only) - uses soft delete"""
+    if not user.get("is_admin"):
+        raise HTTPException(status_code=403, detail="Only admins can delete pools")
+    
+    conn = get_db()
+    cursor = conn.cursor()
+    
+    # Check if pool exists
+    cursor.execute("SELECT id FROM pools WHERE id = ? AND deleted_at IS NULL", (pool_id,))
+    pool = cursor.fetchone()
+    
+    if not pool:
+        conn.close()
+        raise HTTPException(status_code=404, detail="Pool not found")
+    
+    # Log activity BEFORE deletion
+    log_activity(user.get("id"), "pool_moderation_delete", None, pool_id)
+    
+    # Soft delete: mark as deleted
+    from datetime import datetime
+    deleted_at = datetime.now().isoformat()
+    cursor.execute("UPDATE pools SET deleted_at = ? WHERE id = ?", (deleted_at, pool_id))
+    
+    conn.commit()
+    conn.close()
+    
+    return {"message": "Colección eliminada por admin"}
+
+@app.delete("/api/admin/users/{user_id}")
+async def delete_user_admin(user_id: int, admin_user = Depends(require_auth)):
+    """Delete user account (admin only) - uses soft delete"""
+    if not admin_user.get("is_admin"):
+        raise HTTPException(status_code=403, detail="Only admins can delete users")
+    
+    if user_id == admin_user.get("id"):
+        raise HTTPException(status_code=400, detail="Cannot delete your own account")
+    
+    try:
+        conn = get_db()
+        cursor = conn.cursor()
+        
+        # Check if user exists
+        cursor.execute("SELECT id FROM users WHERE id = ? AND deleted_at IS NULL", (user_id,))
+        user = cursor.fetchone()
+        
+        if not user:
+            conn.close()
+            raise HTTPException(status_code=404, detail="User not found")
+        
+        # Log activity BEFORE deletion
+        log_activity(admin_user.get("id"), "user_deletion", None, None)
+        
+        # Soft delete: mark user as deleted
+        from datetime import datetime
+        deleted_at = datetime.now().isoformat()
+        cursor.execute("UPDATE users SET deleted_at = ? WHERE id = ?", (deleted_at, user_id))
+        
+        # Soft delete: mark user's posts as deleted
+        cursor.execute("UPDATE posts SET deleted_at = ? WHERE uploader_id = ? AND deleted_at IS NULL", (deleted_at, user_id))
+        
+        # Soft delete: mark user's pools as deleted
+        cursor.execute("UPDATE pools SET deleted_at = ? WHERE creator_id = ? AND deleted_at IS NULL", (deleted_at, user_id))
+        
+        conn.commit()
+        conn.close()
+        
+        return {"message": "Usuario y contenido relacionado eliminado"}
+    except Exception as e:
+        print(f"Error deleting user {user_id}: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Error al eliminar usuario: {str(e)}")
+
+# ============== MODERATION: DELETED CONTENT ==============
+
+@app.get("/api/admin/deleted/posts")
+async def get_deleted_posts(limit: int = 100, user = Depends(require_auth)):
+    """Get all soft-deleted posts (admin only)"""
+    if not user.get("is_admin"):
+        raise HTTPException(status_code=403, detail="Only admins can view deleted posts")
+    
+    conn = get_db()
+    cursor = conn.cursor()
+    
+    cursor.execute("""
+        SELECT p.id, p.description, p.uploader_id, u.username AS uploader_username,
+               p.favorite_count, p.deleted_at
+        FROM posts p
+        LEFT JOIN users u ON p.uploader_id = u.id
+        WHERE p.deleted_at IS NOT NULL
+        ORDER BY p.deleted_at DESC
+        LIMIT ?
+    """, (limit,))
+    
+    posts = [dict(row) for row in cursor.fetchall()]
+    conn.close()
+    
+    return {"posts": posts}
+
+@app.get("/api/admin/deleted/pools")
+async def get_deleted_pools(limit: int = 100, user = Depends(require_auth)):
+    """Get all soft-deleted pools (admin only)"""
+    if not user.get("is_admin"):
+        raise HTTPException(status_code=403, detail="Only admins can view deleted pools")
+    
+    conn = get_db()
+    cursor = conn.cursor()
+    
+    cursor.execute("""
+        SELECT id, name, description, creator_id, deleted_at
+        FROM pools
+        WHERE deleted_at IS NOT NULL
+        ORDER BY deleted_at DESC
+        LIMIT ?
+    """, (limit,))
+    
+    pools = [dict(row) for row in cursor.fetchall()]
+    conn.close()
+    
+    return {"pools": pools}
+
+@app.get("/api/admin/deleted/users")
+async def get_deleted_users(limit: int = 100, user = Depends(require_auth)):
+    """Get all soft-deleted users (admin only)"""
+    if not user.get("is_admin"):
+        raise HTTPException(status_code=403, detail="Only admins can view deleted users")
+    
+    conn = get_db()
+    cursor = conn.cursor()
+    
+    cursor.execute("""
+        SELECT id, username, email, created_at, deleted_at
+        FROM users
+        WHERE deleted_at IS NOT NULL
+        ORDER BY deleted_at DESC
+        LIMIT ?
+    """, (limit,))
+    
+    users = [dict(row) for row in cursor.fetchall()]
+    conn.close()
+    
+    return {"users": users}
+
+@app.post("/api/admin/restore/post/{post_id}")
+async def restore_post_admin(post_id: int, user = Depends(require_auth)):
+    """Restore a soft-deleted post (admin only)"""
+    if not user.get("is_admin"):
+        raise HTTPException(status_code=403, detail="Only admins can restore posts")
+    
+    conn = get_db()
+    cursor = conn.cursor()
+    
+    # Check if post exists and is deleted
+    cursor.execute("SELECT id FROM posts WHERE id = ? AND deleted_at IS NOT NULL", (post_id,))
+    post = cursor.fetchone()
+    
+    if not post:
+        conn.close()
+        raise HTTPException(status_code=404, detail="Deleted post not found")
+    
+    # Log activity BEFORE restoration
+    log_activity(user.get("id"), "post_moderation_restore", post_id, None)
+    
+    # Restore post
+    cursor.execute("UPDATE posts SET deleted_at = NULL WHERE id = ?", (post_id,))
+    
+    conn.commit()
+    conn.close()
+    
+    return {"message": "Publicación restaurada"}
+
+@app.post("/api/admin/restore/pool/{pool_id}")
+async def restore_pool_admin(pool_id: int, user = Depends(require_auth)):
+    """Restore a soft-deleted pool (admin only)"""
+    if not user.get("is_admin"):
+        raise HTTPException(status_code=403, detail="Only admins can restore pools")
+    
+    conn = get_db()
+    cursor = conn.cursor()
+    
+    # Check if pool exists and is deleted
+    cursor.execute("SELECT id FROM pools WHERE id = ? AND deleted_at IS NOT NULL", (pool_id,))
+    pool = cursor.fetchone()
+    
+    if not pool:
+        conn.close()
+        raise HTTPException(status_code=404, detail="Deleted pool not found")
+    
+    # Log activity BEFORE restoration
+    log_activity(user.get("id"), "pool_moderation_restore", None, pool_id)
+    
+    # Restore pool
+    cursor.execute("UPDATE pools SET deleted_at = NULL WHERE id = ?", (pool_id,))
+    
+    conn.commit()
+    conn.close()
+    
+    return {"message": "Colección restaurada"}
+
+@app.post("/api/admin/restore/user/{user_id}")
+async def restore_user_admin(user_id: int, admin_user = Depends(require_auth)):
+    """Restore a soft-deleted user (admin only)"""
+    if not admin_user.get("is_admin"):
+        raise HTTPException(status_code=403, detail="Only admins can restore users")
+    
+    conn = get_db()
+    cursor = conn.cursor()
+    
+    # Check if user exists and is deleted
+    cursor.execute("SELECT id FROM users WHERE id = ? AND deleted_at IS NOT NULL", (user_id,))
+    user = cursor.fetchone()
+    
+    if not user:
+        conn.close()
+        raise HTTPException(status_code=404, detail="Deleted user not found")
+    
+    # Log activity BEFORE restoration
+    log_activity(admin_user.get("id"), "user_restoration", None, None)
+    
+    # Restore user and their content
+    cursor.execute("UPDATE users SET deleted_at = NULL WHERE id = ?", (user_id,))
+    cursor.execute("UPDATE posts SET deleted_at = NULL WHERE uploader_id = ?", (user_id,))
+    cursor.execute("UPDATE pools SET deleted_at = NULL WHERE creator_id = ?", (user_id,))
+    
+    conn.commit()
+    conn.close()
+    
+    return {"message": "Usuario y contenido restaurado"}
+
+@app.get("/api/admin/activity-log")
+async def get_admin_activity_log(limit: int = 100, user = Depends(require_auth)):
+    """Get admin activity log (admin only)"""
+    if not user.get("is_admin"):
+        raise HTTPException(status_code=403, detail="Only admins can view activity log")
+    
+    conn = get_db()
+    cursor = conn.cursor()
+    
+    cursor.execute("""
+        SELECT id, user_id, action_type, post_id, pool_id, timestamp
+        FROM activity_log
+        WHERE action_type LIKE '%moderation%' OR action_type LIKE '%user_role%' OR action_type = 'user_deletion'
+        ORDER BY timestamp DESC
+        LIMIT ?
+    """, (limit,))
+    
+    logs = [dict(row) for row in cursor.fetchall()]
+    conn.close()
+    
+    return {"logs": logs}
 
 # ============== ROOT ==============
 

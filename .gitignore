@@ -1,0 +1,23 @@
+*.log
+__pycache__/
+.env
+sheepbooru.db
+uploads/
+
+# Python
+*.pyc
+*.pyo
+*.pyd
+.pytest_cache/
+
+# Local editor state
+.vscode/
+.idea/
+
+# Frontend build output
+frontend/dist/
+frontend/node_modules/
+
+# Documentation folders
+docs/
+docsguide/
